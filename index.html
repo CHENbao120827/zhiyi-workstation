@@ -487,6 +487,20 @@ canvas{width:100%;display:block}
         <div class="legend" id="donutLegend"></div>
       </div>
     </div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+      <div class="card">
+        <div class="card-title">本周周报 <span class="tag" id="wkRange">本周</span></div>
+        <div id="weekReport"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">习惯达成率 · 近 6 周</div>
+        <div id="habitTrend" style="display:grid;gap:8px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">目标进度</div>
+        <div id="goalProg" style="display:grid;gap:10px"></div>
+      </div>
+    </div>
   </section>
 
   <!-- ============ 马上起飞 ============ -->
@@ -513,10 +527,7 @@ canvas{width:100%;display:block}
 </div>
 
 <div class="toolbar">
-  <button class="tbtn" id="btnExport">导出备份</button>
-  <button class="tbtn" id="btnImport">导入备份</button>
-  <button class="tbtn danger" id="btnReset">清空数据</button>
-  <input type="file" id="fileImport" accept=".json,application/json" hidden>
+  <span id="syncState" style="font-size:11px;color:var(--dim);letter-spacing:1px">云端连接中…</span>
   <span style="margin-left:auto;font-size:11px;color:var(--dim);letter-spacing:1px">智己工作站 · 完全版</span>
 </div>
 <div id="toast"></div>
@@ -563,8 +574,52 @@ if(!S.links)S.links=defaults().links;
   if(need)try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){}
 })();
 
+/* ---------- 云端同步（这台电脑 = 服务器，多设备共享数据） ---------- */
+var SYNC_TOKEN='zhiyi-ws-2026';
+var syncBase=(function(){
+  var h=location.hostname||'';
+  if(h==='localhost'||h==='127.0.0.1'||h.indexOf('192.168.')===0||h.indexOf('10.')===0||h.indexOf('172.')===0)return location.origin;
+  return localStorage.getItem('syncUrl')||'';
+})();
+var _syncing=false,_dirty=false,_lastSyncTs=0;
+function setSync(st){ var el=$('syncState'); if(el){ el.textContent=st?'云端已连接':'云端离线'; el.style.color=st?'var(--ok)':'var(--bad)'; } }
+function normalizeS(){ if(!S.tasks)S.tasks=[]; if(!S.habits)S.habits=[]; if(!S.goals)S.goals=[]; if(!S.notes)S.notes=[]; if(!S.habitLog||typeof S.habitLog!=='object')S.habitLog={}; if(!S.focus||typeof S.focus!=='object')S.focus={days:{}}; if(!S.focus.days)S.focus.days={}; if(!S.cal||!S.cal.events)S.cal={events:[],sel:''}; if(!S.links)S.links=defaults().links; }
+function syncPush(){
+  if(!syncBase)return;
+  _dirty=true;
+  if(_syncing)return;
+  _syncing=true; _dirty=false;
+  var ts=Date.now();
+  fetch(syncBase+'/api/state',{method:'POST',headers:{'Content-Type':'application/json','X-Token':SYNC_TOKEN},body:JSON.stringify({ts:ts,data:S})})
+    .then(function(r){return r.json();})
+    .then(function(j){ if(j&&j.ok){ _lastSyncTs=ts; setSync(true); } else setSync(false); })
+    .catch(function(){ setSync(false); })
+    .then(function(){ _syncing=false; if(_dirty){ _dirty=false; syncPush(); } });
+}
+function hasRealData(d){ return !!(d&&((d.tasks&&d.tasks.length)||(d.habits&&d.habits.length)||(d.goals&&d.goals.length)||(d.notes&&d.notes.length)||(d.name)||(d.habitLog&&Object.keys(d.habitLog).length)||(d.focus&&d.focus.days&&Object.keys(d.focus.days).length))); }
+function localHasReal(){
+  try{ var r=localStorage.getItem(LS_KEY); if(!r)return false; var d=JSON.parse(r); return hasRealData(d); }catch(e){ return false; }
+}
+function adopt(data){ S=Object.assign(defaults(),data); normalizeS(); _lastSyncTs=j_ts; try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){} renderAll(); }
+function syncPull(){
+  if(!syncBase)return;
+  fetch(syncBase+'/api/state',{headers:{'X-Token':SYNC_TOKEN}})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      if(j&&j.ok&&j.data&&typeof j.ts==='number'){
+        if(_lastSyncTs===0){
+          if(j.ts>0&&hasRealData(j.data)){ adopt(j.data); }        // 云端有真实数据 → 采用
+          else if(localHasReal()){ _lastSyncTs=Date.now(); syncPush(); }  // 云端空但本地有 → 把本地推上去
+          else { _lastSyncTs=Math.max(j.ts,1); }                   // 都空 → 保持
+        } else if(j.ts>_lastSyncTs){ adopt(j.data); }              // 增量：云端更新则采用
+        setSync(true);
+      } else setSync(false);
+    })
+    .catch(function(){ setSync(false); });
+}
 function save(){
   try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){ toast('提示：当前环境无法持久保存'); }
+  syncPush();
   renderAll();
 }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -1447,42 +1502,70 @@ function renderData(){
   var total=Object.keys(days).reduce(function(a,k){return a+days[k];},0);
   $('stFocus').textContent=total;
   drawLine(); drawDonut();
+  renderWeekReport(); renderHabitTrend(); renderGoalProg();
 }
 
-/* ---------- 备份 ---------- */
-$('btnExport').addEventListener('click',function(){
-  var blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='智己工作站备份-'+today().replace(/-/g,'')+'.json';
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},400);
-  toast('备份已导出');
-});
-$('btnImport').addEventListener('click',function(){$('fileImport').click();});
-$('fileImport').addEventListener('change',function(){
-  var f=this.files[0]; if(!f)return;
-  var rd=new FileReader();
-  rd.onload=function(){
-    try{
-      var d=JSON.parse(rd.result);
-      if(!d||typeof d!=='object')throw new Error('bad');
-      S=Object.assign(defaults(),d);
-      if(!S.tasks)S.tasks=[]; if(!S.habits)S.habits=[]; if(!S.goals)S.goals=[]; if(!S.notes)S.notes=[];
-      if(!S.habitLog||typeof S.habitLog!=='object')S.habitLog={};
-      if(!S.focus||typeof S.focus!=='object')S.focus={days:{}};
-      if(!S.focus.days)S.focus.days={};
-      if(!S.cal||!S.cal.events)S.cal={events:[],sel:''};
-      if(!S.links)S.links=defaults().links;
-      save(); toast('备份已导入');
-    }catch(e){ toast('导入失败：文件格式不正确'); }
-  };
-  rd.readAsText(f);
-  this.value='';
-});
-$('btnReset').addEventListener('click',function(){
-  if(confirm('确定要清空「智己工作站」里的所有数据吗？此操作不可恢复。')){ S=defaults(); save(); toast('数据已清空'); }
-});
+function fmtDate(d){ var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
+function weekMonday(d){ var w=new Date(d); w.setHours(0,0,0,0); var day=w.getDay(); w.setDate(w.getDate()-(day===0?6:day-1)); return w; }
+function renderWeekReport(){
+  var el=$('weekReport'); if(!el)return;
+  var now=new Date(), mon=weekMonday(now);
+  var m0=mon.getTime(), prevMon=new Date(mon); prevMon.setDate(mon.getDate()-7);
+  var p0=prevMon.getTime();
+  var wkNew=0,wkDone=0,hi=0,mi=0,lo=0,prevDone=0;
+  S.tasks.forEach(function(t){
+    if(t.created&&t.created>=m0)wkNew++;
+    if(t.done&&t.doneAt){
+      if(t.doneAt>=m0){ wkDone++; if(t.pri==='high')hi++; else if(t.pri==='mid')mi++; else lo++; }
+      if(t.doneAt>=p0&&t.doneAt<m0)prevDone++;
+    }
+  });
+  var rate=wkNew?Math.round(wkDone/wkNew*100):0;
+  var diff=wkDone-prevDone;
+  var hb=0, fd=0, d0=fmtDate(mon), d1=fmtDate(now);
+  Object.keys(S.habitLog||{}).forEach(function(hid){
+    Object.keys(S.habitLog[hid]||{}).forEach(function(d){ if(d>=d0&&d<=d1)hb++; });
+  });
+  Object.keys(S.focus.days||{}).forEach(function(d){ if(d>=d0&&d<=d1)fd+=S.focus.days[d]; });
+  var sum=hi+mi+lo;
+  var priHtml=sum?('<span>高 <b class="ex-num" style="color:var(--bad)">'+hi+'</b> · 中 <b class="ex-num" style="color:var(--gold)">'+mi+'</b> · 低 <b class="ex-num" style="color:var(--ok)">'+lo+'</b></span>'):'<span>暂无完成</span>';
+  var trend='本周较上周 '+(diff===0?'持平':(diff>0?'<b style="color:var(--ok)">+'+diff+' 件</b>':'<b style="color:var(--bad)">'+diff+' 件</b>'));
+  el.innerHTML=
+    '<div class="ex-row"><span>本周完成 '+wkDone+' / 新增 '+wkNew+'</span><span class="ex-num">完成率 '+rate+'%</span></div>'+
+    '<div class="sys-bar" style="margin:2px 0 10px"><div class="sys-fill'+(rate>=60?'':(rate>=40?' warn':''))+'" style="width:'+Math.min(100,rate)+'%"></div></div>'+
+    '<div class="ex-row">'+priHtml+trend+'</div>'+
+    '<div class="ex-row"><span>习惯打卡 '+hb+' 次</span><span>专注 '+fd+' 次</span></div>'+
+    '<div class="ex-tip" style="margin-top:8px">'+(wkNew?'本周计划 '+wkNew+' 件，已清 '+wkDone+' 件':'本周还没有新增任务，去待办里写下一件事吧')+'</div>';
+  $('wkRange').textContent=fmtDate(mon)+' ~ '+d1;
+}
+function renderHabitTrend(){
+  var el=$('habitTrend'); if(!el)return;
+  var mon=weekMonday(new Date());
+  var nH=S.habits.length||1;
+  var labels=['本周','上周','2周前','3周前','4周前','5周前'];
+  var rows=[];
+  for(var w=0;w<6;w++){
+    var s=new Date(mon); s.setDate(mon.getDate()-w*7);
+    var e=new Date(s); e.setDate(s.getDate()+6);
+    var ds=fmtDate(s), de=fmtDate(e), hit=0;
+    Object.keys(S.habitLog||{}).forEach(function(hid){
+      Object.keys(S.habitLog[hid]||{}).forEach(function(d){ if(d>=ds&&d<=de)hit++; });
+    });
+    var pct=Math.min(100,Math.round(hit/(nH*7)*100));
+    rows.push('<div class="sys-row"><span class="lbl" style="width:46px;flex:none">'+labels[w]+'</span><div class="sys-bar"><div class="sys-fill'+(pct>=70?'':(pct>=40?' warn':''))+'" style="width:'+pct+'%"></div></div><span class="val">'+pct+'%</span></div>');
+  }
+  el.innerHTML=nH?rows.join(''):'<div class="empty">还没有播种习惯，去「习惯」页开始第一个吧</div>';
+}
+function renderGoalProg(){
+  var el=$('goalProg'); if(!el)return;
+  var gs=S.goals.filter(function(g){return !g.done;}).slice(0,5);
+  if(!gs.length){ el.innerHTML='<div class="empty">暂无进行中的目标</div>'; return; }
+  el.innerHTML=gs.map(function(g){
+    var left=Math.max(0,Math.ceil((new Date(g.due+'T00:00:00')-Date.now())/86400000));
+    var p=Math.min(100,Number(g.progress)||0);
+    return '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><span>'+esc(g.name)+'</span><span class="ex-num">'+p+'% · 剩 '+left+' 天</span></div><div class="sys-bar"><div class="sys-fill" style="width:'+p+'%"></div></div></div>';
+  }).join('');
+}
 
 /* ---------- 启动 ---------- */
 function renderAll(){
@@ -1495,6 +1578,8 @@ var defDate=new Date(); defDate.setDate(defDate.getDate()+30);
 $('goalDate').value=fmt(defDate);
 renderAll();
 renderLaunch();
+syncPull();
+setInterval(function(){ if(!document.hidden) syncPull(); },30000);
 $('btnWxRefresh').addEventListener('click',refreshWeather);
 $('btnNewsRefresh').addEventListener('click',function(){fetchNewsAll();});
 initGeo();

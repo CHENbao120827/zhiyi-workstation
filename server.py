@@ -191,6 +191,31 @@ def proxy_news(kw):
     _news_cache[kw] = {'t': now, 'xml': xml}
     return xml
 
+# ---------- 云端数据存储（这台电脑 = 服务器，多设备同步） ----------
+STATE_FILE = os.path.join(ROOT, 'state.json')
+SYNC_TOKEN = os.environ.get('SYNC_TOKEN', 'zhiyi-ws-2026')
+_lock = threading.Lock()
+
+def load_state():
+    try:
+        with open(STATE_FILE, 'r', encoding='utf-8') as f:
+            d = json.load(f)
+        if isinstance(d, dict) and 'data' in d:
+            return d
+    except Exception:
+        pass
+    return {'ts': 0, 'data': {}}
+
+def save_state(ts, data):
+    with _lock:
+        with open(STATE_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'ts': ts, 'data': data}, f, ensure_ascii=False)
+    return ts
+
+def check_token(h):
+    tok = h.get('X-Token', '')
+    return tok == SYNC_TOKEN
+
 # ---------- HTTP 服务 ----------
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
@@ -202,11 +227,39 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(data)))
         self.send_header('Cache-Control', 'no-store')
+        # CORS：允许 GitHub Pages 等任意来源的前端调用本后端
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, X-Token')
         self.end_headers()
         self.wfile.write(data)
 
     def _json(self, code, obj):
         self._send(code, json.dumps(obj, ensure_ascii=False), 'application/json; charset=utf-8')
+
+    def do_OPTIONS(self):
+        self._send(204, '', 'text/plain; charset=utf-8')
+
+    def do_POST(self):
+        try:
+            u = urllib.parse.urlparse(self.path)
+            if u.path != '/api/state':
+                self._json(404, {'ok': False, 'msg': 'not found'})
+                return
+            if not check_token(self.headers):
+                self._json(401, {'ok': False, 'msg': 'token 无效'})
+                return
+            ln = int(self.headers.get('Content-Length') or 0)
+            body = self.rfile.read(ln).decode('utf-8', 'replace')
+            d = json.loads(body)
+            ts = int(d.get('ts') or time.time() * 1000)
+            data = d.get('data')
+            if not isinstance(data, dict):
+                raise ValueError('bad data')
+            save_state(ts, data)
+            self._json(200, {'ok': True, 'ts': ts})
+        except Exception as e:
+            self._json(400, {'ok': False, 'msg': str(e)})
 
     def do_GET(self):
         try:
@@ -214,6 +267,15 @@ class Handler(BaseHTTPRequestHandler):
             route = u.path
             if route == '/api/sys':
                 self._json(200, sys_status())
+                return
+            if route == '/api/ping':
+                self._json(200, {'ok': True, 'host': socket.gethostname(), 'ip': lan_ips()})
+                return
+            if route == '/api/state':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
+                self._json(200, load_state())
                 return
             if route == '/api/open':
                 qs = urllib.parse.parse_qs(u.query)
