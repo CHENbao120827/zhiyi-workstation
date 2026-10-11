@@ -608,7 +608,7 @@ function hasRealData(d){ return !!(d&&((d.tasks&&d.tasks.length)||(d.habits&&d.h
 function localHasReal(){
   try{ var r=localStorage.getItem(LS_KEY); if(!r)return false; var d=JSON.parse(r); return hasRealData(d); }catch(e){ return false; }
 }
-function adopt(data){ S=Object.assign(defaults(),data); normalizeS(); _lastSyncTs=j_ts; try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){} renderAll(); }
+function adopt(data,ts){ S=Object.assign(defaults(),data); normalizeS(); _lastSyncTs=ts; try{ localStorage.setItem(LS_KEY,JSON.stringify(S)); }catch(e){} renderAll(); }
 function syncPull(){
   if(!syncBase)return;
   fetch(syncBase+'/api/state',{headers:{'X-Token':SYNC_TOKEN}})
@@ -616,10 +616,10 @@ function syncPull(){
     .then(function(j){
       if(j&&j.ok&&j.data&&typeof j.ts==='number'){
         if(_lastSyncTs===0){
-          if(j.ts>0&&hasRealData(j.data)){ adopt(j.data); }        // 云端有真实数据 → 采用
+          if(j.ts>0&&hasRealData(j.data)){ adopt(j.data,j.ts); }        // 云端有真实数据 → 采用
           else if(localHasReal()){ _lastSyncTs=Date.now(); syncPush(); }  // 云端空但本地有 → 把本地推上去
           else { _lastSyncTs=Math.max(j.ts,1); }                   // 都空 → 保持
-        } else if(j.ts>_lastSyncTs){ adopt(j.data); }              // 增量：云端更新则采用
+        } else if(j.ts>_lastSyncTs){ adopt(j.data,j.ts); }              // 增量：云端更新则采用
         setSync(true);
       } else setSync(false);
     })
