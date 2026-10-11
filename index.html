@@ -353,6 +353,17 @@ canvas{width:100%;display:block}
       </div>
     </div>
 
+    <div class="grid dash-sys">
+      <div class="card">
+        <div class="card-title">今日军械库 <span class="tag">每日一更</span></div>
+        <div id="weaponBox"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">今日科技 <span class="tag">每日一更</span></div>
+        <div id="techBox"></div>
+      </div>
+    </div>
+
     <div class="grid dash-mid">
       <div class="card">
         <div class="card-title">Calendar <span class="tag">日程</span></div>
@@ -1580,9 +1591,54 @@ function renderGoalProg(){
   }).join('');
 }
 
+/* ---------- 每日知识（军械 / 科技，内置真实可查内容） ---------- */
+var WEAPONS=[
+ {n:'99A 主战坦克',c:'中国',k:'主战坦克',d:'125 毫米滑膛炮 · 约 55 吨 · 1500 马力级发动机，信息化程度领先的三代主战坦克。',t:'地面突击'},
+ {n:'歼-20 隐身战斗机',c:'中国',k:'第五代战斗机',d:'2011 年首飞、2017 年列装的双发重型隐身战机，是空军制空核心。',t:'空中优势'},
+ {n:'055 型驱逐舰',c:'中国',k:'万吨大驱',d:'112 单元通用垂直发射系统，2019 年服役，代表水面舰艇先进水平。',t:'海上威慑'},
+ {n:'山东舰',c:'中国',k:'航空母舰',d:'首艘国产航母，约 6 万吨级，2019 年交付，滑跃起飞。',t:'远洋能力'},
+ {n:'AK-47 突击步枪',c:'苏联',k:'突击步枪',d:'7.62×39 毫米，1947 年定型，卡拉什尼科夫设计，产量超 1 亿支。',t:'经典枪械'},
+ {n:'M1A2 艾布拉姆斯',c:'美国',k:'主战坦克',d:'120 毫米滑膛炮 · 约 68 吨 · 1500 马力燃气轮机，海湾战争成名。',t:'地面突击'},
+ {n:'F-22 猛禽',c:'美国',k:'第五代战斗机',d:'2005 年服役的全球首款五代机，隐身+超巡+超机动。',t:'空中优势'},
+ {n:'东风-17',c:'中国',k:'高超音速导弹',d:'2019 年阅兵亮相，乘波体弹头，具备高超音速突防能力。',t:'战略威慑'},
+ {n:'战斧巡航导弹',c:'美国',k:'巡航导弹',d:'亚音速、射程约 1600 公里，可由舰/潜/空多平台发射。',t:'远程打击'}
+];
+var TECHS=[
+ {n:'天宫空间站',c:'中国',d:'三舱构型，2022 年建成，长期有人驻留的太空实验室。',t:'载人航天'},
+ {n:'中国天眼 FAST',c:'中国',d:'500 米口径球面射电望远镜，2016 年启用，全球最大单口径。',t:'深空探测'},
+ {n:'北斗三号',c:'中国',d:'2020 年建成全球组网，55 颗卫星，全球卫星导航系统。',t:'导航定位'},
+ {n:'C919 干线客机',c:'中国',d:'2023 年商业首航的单通道干线客机，国产大飞机。',t:'民用航空'},
+ {n:'复兴号',c:'中国',d:'中国标准动车组，运营时速 350 公里，全球领先。',t:'高铁技术'},
+ {n:'EAST 东方超环',c:'中国',d:'全超导托卡马克，2023 年实现 403 秒长脉冲高约束等离子体运行。',t:'核聚变'},
+ {n:'长征五号',c:'中国',d:'大型运载火箭，近地轨道运力约 25 吨，2016 年首飞。',t:'运载火箭'},
+ {n:'墨子号',c:'中国',d:'世界首颗量子科学实验卫星，2016 年发射，实现星地量子密钥分发。',t:'量子科技'}
+];
+function dailyPick(list,key){
+  var t=today(), k=key+'.v1', c=null;
+  try{ c=JSON.parse(localStorage.getItem(k)||'null'); }catch(e){}
+  if(c&&c.d===t&&c.i>=0&&c.i<list.length)return c.i;
+  var i=Math.floor(Math.random()*list.length);
+  try{ localStorage.setItem(k,JSON.stringify({d:t,i:i})); }catch(e){}
+  return i;
+}
+function renderDaily(){
+  var w=$('weaponBox');
+  if(w){ var a=WEAPONS[dailyPick(WEAPONS,'weapon.day')];
+    w.innerHTML='<div class="wx-temp" style="font-size:20px;margin:4px 0">'+esc(a.n)+'</div>'+
+      '<div class="wx-meta">'+esc(a.c)+' · '+esc(a.k)+'</div>'+
+      '<div class="wx-cond" style="margin-top:8px">'+esc(a.d)+'</div>'+
+      '<div class="wx-upd">今日军械 · '+esc(a.t)+'</div>'; }
+  var b=$('techBox');
+  if(b){ var a2=TECHS[dailyPick(TECHS,'tech.day')];
+    b.innerHTML='<div class="wx-temp" style="font-size:20px;margin:4px 0">'+esc(a2.n)+'</div>'+
+      '<div class="wx-meta">'+esc(a2.c)+'</div>'+
+      '<div class="wx-cond" style="margin-top:8px">'+esc(a2.d)+'</div>'+
+      '<div class="wx-upd">今日科技 · '+esc(a2.t)+'</div>'; }
+}
 /* ---------- 启动 ---------- */
 function renderAll(){
   renderWeather(); renderNews(); renderLinks(); renderCal();
+  renderDaily();
   renderMiniTodo(); renderTasks(); renderHabits(); renderGoals(); renderNotes(); renderFocus();
   if(cur==='data')renderData();
 }
