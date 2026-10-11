@@ -266,6 +266,9 @@ class Handler(BaseHTTPRequestHandler):
             u = urllib.parse.urlparse(self.path)
             route = u.path
             if route == '/api/sys':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
                 self._json(200, sys_status())
                 return
             if route == '/api/ping':
@@ -278,11 +281,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(200, load_state())
                 return
             if route == '/api/open':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
                 qs = urllib.parse.parse_qs(u.query)
                 key = (qs.get('app') or [''])[0]
                 self._json(200, launch_app(key))
                 return
             if route == '/api/news':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
                 qs = urllib.parse.parse_qs(u.query)
                 kw = (qs.get('kw') or [''])[0]
                 if not kw:

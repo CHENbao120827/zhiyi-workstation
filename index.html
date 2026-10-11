@@ -528,6 +528,8 @@ canvas{width:100%;display:block}
 
 <div class="toolbar">
   <span id="syncState" style="font-size:11px;color:var(--dim);letter-spacing:1px">云端连接中…</span>
+  <input id="syncUrlInput" placeholder="云端地址(隧道URL,可留空)" style="width:190px;margin-left:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:var(--txt);font-size:11px;padding:3px 8px;outline:none">
+  <button class="tbtn" id="btnSyncSet" style="margin-left:6px;padding:2px 10px;font-size:11px">保存</button>
   <span style="margin-left:auto;font-size:11px;color:var(--dim);letter-spacing:1px">智己工作站 · 完全版</span>
 </div>
 <div id="toast"></div>
@@ -576,11 +578,17 @@ if(!S.links)S.links=defaults().links;
 
 /* ---------- 云端同步（这台电脑 = 服务器，多设备共享数据） ---------- */
 var SYNC_TOKEN='zhiyi-ws-2026';
-var syncBase=(function(){
-  var h=location.hostname||'';
-  if(h==='localhost'||h==='127.0.0.1'||h.indexOf('192.168.')===0||h.indexOf('10.')===0||h.indexOf('172.')===0)return location.origin;
-  return localStorage.getItem('syncUrl')||'';
-})();
+var syncBase='';
+function defaultSyncBase(){ var h=location.hostname||''; if(h==='localhost'||h==='127.0.0.1'||h.indexOf('192.168.')===0||h.indexOf('10.')===0||h.indexOf('172.')===0)return location.origin; return ''; }
+function useSavedSync(){ syncBase=localStorage.getItem('syncUrl')||''; }
+function detectSyncBase(cb){
+  if(syncBase){ cb(true); return; }
+  var probe=location.origin;
+  fetch(probe+'/api/ping',{headers:{'X-Token':SYNC_TOKEN}})
+    .then(function(r){return r.json();})
+    .then(function(j){ if(j&&j.ok){ syncBase=probe; } else { useSavedSync(); } cb(!!syncBase); })
+    .catch(function(){ useSavedSync(); cb(!!syncBase); });
+}
 var _syncing=false,_dirty=false,_lastSyncTs=0;
 function setSync(st){ var el=$('syncState'); if(el){ el.textContent=st?'云端已连接':'云端离线'; el.style.color=st?'var(--ok)':'var(--bad)'; } }
 function normalizeS(){ if(!S.tasks)S.tasks=[]; if(!S.habits)S.habits=[]; if(!S.goals)S.goals=[]; if(!S.notes)S.notes=[]; if(!S.habitLog||typeof S.habitLog!=='object')S.habitLog={}; if(!S.focus||typeof S.focus!=='object')S.focus={days:{}}; if(!S.focus.days)S.focus.days={}; if(!S.cal||!S.cal.events)S.cal={events:[],sel:''}; if(!S.links)S.links=defaults().links; }
@@ -807,7 +815,7 @@ function renderSys(d){
   drawSpark();
 }
 function pollSys(){
-  fetch('/api/sys',{cache:'no-store'})
+  fetch('/api/sys',{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
     .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
     .then(function(d){
       SYS.on=true;
@@ -835,7 +843,7 @@ function renderLaunch(){
 $('launchGrid').addEventListener('click',function(e){
   var b=e.target.closest('.launch-btn'); if(!b)return;
   var key=b.getAttribute('data-key');
-  fetch('/api/open?app='+key,{cache:'no-store'})
+  fetch('/api/open?app='+key,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
     .then(function(r){return r.json();})
     .then(function(j){ toast(j.ok?j.msg:('启动失败：'+j.msg)); })
     .catch(function(){ toast('后端未连接，先双击「启动工作台.bat」'); });
@@ -844,7 +852,7 @@ $('launchGrid').addEventListener('click',function(e){
 document.querySelectorAll('.lp-btn').forEach(function(b){
   b.addEventListener('click',function(){
     var app=b.getAttribute('data-app');
-    fetch('/api/open?app='+app,{cache:'no-store'})
+    fetch('/api/open?app='+app,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
       .then(function(r){return r.json();})
       .then(function(j){ toast(j.ok?j.msg:('启动失败：'+j.msg)); })
       .catch(function(){ toast('后端未连接，先双击「启动工作台.bat」'); });
@@ -889,6 +897,8 @@ var NEWS={};
 var newsCat='delta';
 var NTABS=[['delta','三角洲','#f5c15e'],['mc','MC 世界','#34d399'],['war','战争','#f47070'],['arms','军械','#fbbf24'],['tech','科技','#38bdf8']];
 function bingNewsUrl(kw){
+  var base=(typeof syncBase!=='undefined'&&syncBase)?syncBase:'';
+  if(base&&base!==location.origin)return base+'/api/news?kw='+encodeURIComponent(kw);
   return 'https://api.allorigins.win/raw?url='+encodeURIComponent('https://www.bing.com/news/search?q='+encodeURIComponent(kw)+'&format=rss&setlang=zh-hans&cc=CN');
 }
 function parseRSS(xml){
@@ -935,7 +945,10 @@ function fetchNews(cat,force){
     NEWS[cat]={t:Date.now(),items:NEWS_CUR[cat]||[],live:false};
     renderNews();
   };
-  fetch(bingNewsUrl(NEWS_KEYS[cat]))
+  var nu=bingNewsUrl(NEWS_KEYS[cat]);
+  var nopt={};
+  if(nu.indexOf('/api/news')>-1)nopt={headers:{'X-Token':SYNC_TOKEN}};
+  fetch(nu,nopt)
     .then(function(r){return r.text();})
     .then(function(xml){ if(parseRSS(xml).length)mark(xml); else throw new Error('empty'); })
     .catch(function(){
@@ -1578,7 +1591,17 @@ var defDate=new Date(); defDate.setDate(defDate.getDate()+30);
 $('goalDate').value=fmt(defDate);
 renderAll();
 renderLaunch();
-syncPull();
+(function(){
+  var u=$('syncUrlInput'); if(!u)return;
+  u.value=localStorage.getItem('syncUrl')||'';
+  $('btnSyncSet').addEventListener('click',function(){
+    var v=u.value.trim().replace(/\/+$/,'');
+    if(v){ localStorage.setItem('syncUrl',v); syncBase=v; }
+    else { localStorage.removeItem('syncUrl'); syncBase=defaultSyncBase(); }
+    _lastSyncTs=0; syncPull(); toast('云端地址已保存，正在连接…');
+  });
+})();
+detectSyncBase(function(){ syncPull(); setSync(!!syncBase); });
 setInterval(function(){ if(!document.hidden) syncPull(); },30000);
 $('btnWxRefresh').addEventListener('click',refreshWeather);
 $('btnNewsRefresh').addEventListener('click',function(){fetchNewsAll();});
