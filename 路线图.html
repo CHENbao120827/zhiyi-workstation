@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智己工作站 · 24 小时打造计划</title>
+<style>
+:root{
+  --bg1:#0b1020; --line:rgba(255,255,255,.09); --card:rgba(255,255,255,.045);
+  --txt:#e8ecf8; --sub:#9aa4c4; --acc1:#8b7bff; --acc2:#3ec5ff;
+  --ok:#4ade80; --warn:#fbbf24; --bad:#f87171;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--txt);
+  background:radial-gradient(900px 600px at 10% -10%,#232c5c 0%,transparent 55%),var(--bg1);
+  min-height:100vh;padding:34px 26px 50px;
+}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:24px;font-weight:800;letter-spacing:1px}
+h1 .g{background:linear-gradient(90deg,var(--acc1),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{font-size:13px;color:var(--sub);margin-top:6px}
+.countdown{
+  margin-top:16px;display:inline-block;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;padding:10px 18px;font-size:13px;color:var(--sub);
+}
+.countdown b{color:var(--acc2);font-variant-numeric:tabular-nums;font-size:15px}
+/* 时间轴 */
+.tl{position:relative;margin:34px 0 10px;padding-left:26px}
+.tl::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;
+  background:linear-gradient(180deg,var(--acc1),var(--acc2));border-radius:2px;opacity:.55}
+.phase{position:relative;margin-bottom:26px}
+.phase::before{content:"";position:absolute;left:-26px;top:4px;width:16px;height:16px;border-radius:50%;
+  background:linear-gradient(135deg,var(--acc1),var(--acc2));border:3px solid var(--bg1);
+  box-shadow:0 0 0 2px rgba(139,123,255,.35)}
+.phase.done::before{background:linear-gradient(135deg,#34d399,#4ade80);box-shadow:0 0 0 2px rgba(74,222,128,.35)}
+.phase.now::before{box-shadow:0 0 0 2px rgba(139,123,255,.6),0 0 14px rgba(139,123,255,.8);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 2px rgba(139,123,255,.6),0 0 14px rgba(139,123,255,.8)}50%{box-shadow:0 0 0 4px rgba(139,123,255,.25),0 0 20px rgba(139,123,255,.6)}}
+.phase-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.phase-time{font-size:12px;color:var(--sub);background:rgba(255,255,255,.06);padding:3px 10px;border-radius:20px;letter-spacing:.5px}
+.phase-name{font-size:16px;font-weight:700}
+.st{font-size:11.5px;padding:2px 10px;border-radius:20px;letter-spacing:1px}
+.st-done{color:var(--ok);background:rgba(74,222,128,.12)}
+.st-now{color:#fff;background:rgba(139,123,255,.25);border:1px solid rgba(139,123,255,.5)}
+.st-wait{color:var(--sub);background:rgba(255,255,255,.06)}
+.phase-body{margin-top:10px;font-size:13.5px;color:var(--sub);line-height:1.8}
+.phase-body li{list-style:none;position:relative;padding-left:16px}
+.phase-body li::before{content:"";position:absolute;left:2px;top:9px;width:6px;height:6px;border-radius:50%;background:var(--acc2);opacity:.7}
+.phase-body li.done{color:#8fb0a0}
+.phase-body li.done::before{background:var(--ok)}
+/* 验收标准 */
+h2{font-size:17px;margin:34px 0 14px;letter-spacing:.5px}
+.check{display:flex;flex-direction:column;gap:9px}
+.check div{display:flex;align-items:center;gap:10px;font-size:13.5px;padding:11px 14px;
+  background:var(--card);border:1px solid var(--line);border-radius:11px}
+.check .cb{width:18px;height:18px;border-radius:5px;flex:none;border:1.5px solid #56607f;position:relative}
+.check div.met .cb{background:linear-gradient(135deg,var(--acc1),var(--acc2));border-color:transparent}
+.check div.met .cb::after{content:"";position:absolute;left:5px;top:2px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.check .tx{flex:1}
+.check .ps{font-size:11.5px;color:var(--sub)}
+.foot{margin-top:40px;font-size:12px;color:#6a7395;text-align:center}
+@media (max-width:560px){h1{font-size:20px}.phase-body{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="g">智己工作站</span> · 24 小时打造计划</h1>
+  <div class="sub">起点：2026-10-11（周日）10:12 · 截止：2026-10-12（周一）10:12 · 坐标：桌面文件夹</div>
+  <div class="countdown">距最终验收还有 <b id="cd">--</b> <span id="cdHint">（实时）</span></div>
+
+  <div class="tl">
+    <div class="phase done">
+      <div class="phase-head">
+        <span class="phase-time">0 – 2 小时</span>
+        <span class="phase-name">地基与首版</span>
+        <span class="st st-done">已完成</span>
+      </div>
+      <ul class="phase-body">
+        <li class="done">在桌面创建「智己工作站」文件夹</li>
+        <li class="done">个人工作台 v1 上线：今日 / 待办 / 习惯 / 目标 / 灵感 / 专注 / 数据 七大模块</li>
+        <li class="done">README 与路线图页就位</li>
+      </ul>
+    </div>
+    <div class="phase done">
+      <div class="phase-head">
+        <span class="phase-time">2 – 8 小时</span>
+        <span class="phase-name">核心功能加固</span>
+        <span class="st st-done">已完成</span>
+      </div>
+      <ul class="phase-body">
+        <li class="done">数据持久化与备份：导出 / 导入 / 一键恢复</li>
+        <li class="done">专注番茄钟：25/5 计时、提示音、次数统计</li>
+        <li class="done">习惯追踪：近 6 周打卡网格与连续天数</li>
+        <li class="done">实时引擎：天气 / 新闻每 30 分钟自动刷新（Open-Meteo + Bing RSS）</li>
+        <li class="done">待办增强：截止日期与过期提醒、拖拽排序、批量完成 / 批量删除</li>
+        <li class="done">六项定制落地：启动器外移修复 / 快捷入口图标 / 问候与每日一言 / 天气穿衣·AQI·定位 / 马上起飞 / hash 路由</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <div class="phase-head">
+        <span class="phase-time">8 – 14 小时</span>
+        <span class="phase-name">数据与洞察</span>
+        <span class="st st-wait">待办</span>
+      </div>
+      <ul class="phase-body">
+        <li class="done">近 7 日任务完成曲线</li>
+        <li class="done">任务优先级分布环图</li>
+        <li>周报自动生成：本周完成情况一页纸</li>
+        <li>习惯达成率与目标进度趋势</li>
+      </ul>
+    </div>
+    <div class="phase done">
+      <div class="phase-head">
+        <span class="phase-time">14 – 20 小时</span>
+        <span class="phase-name">个性化定制</span>
+        <span class="st st-done">已完成</span>
+      </div>
+      <ul class="phase-body">
+        <li class="done">三角洲兴趣内容：工作台新闻分类 + 快捷入口（依据你的偏好定制）</li>
+        <li class="done">根据你的偏好定制主题与模块（黑蓝科技感仪表盘 + 实时资讯，已落地）</li>
+        <li class="done">常用快捷入口：你的高频网站 / 工具一键直达（可增删、误删自动恢复）</li>
+        <li class="done">增值内容：系统实时监测 + 本机应用一键启动（前后端）</li>
+        <li class="done">「马上起飞」：火星之心 / 航天模拟器 一键启动（已实测）</li>
+        <li class="done">快捷入口九卡真实图标 + 按时段问候「你好，陈震轩」 + 每日一言随机</li>
+      </ul>
+    </div>
+    <div class="phase">
+      <div class="phase-head">
+        <span class="phase-time">20 – 24 小时</span>
+        <span class="phase-name">走查与交付</span>
+        <span class="st st-wait">待办</span>
+      </div>
+      <ul class="phase-body">
+        <li>功能逐项自检、体验打磨、消除已知小问题</li>
+        <li>交付说明与使用清单</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>验收标准 · 什么算「值得留下」</h2>
+  <div class="check">
+    <div class="met"><span class="cb"></span><span class="tx">文件夹里有能双击打开、真实可用的作品</span><span class="ps">已完成</span></div>
+    <div class="met"><span class="cb"></span><span class="tx">作品有持续演进的证据（更新日志 / 路线图）</span><span class="ps">已完成</span></div>
+    <div class="met"><span class="cb"></span><span class="tx">作品真正贴合你的使用场景与审美（学习·娱乐·创作 / 实用工具 / 简洁深色 / 三角洲内容）</span><span class="ps">已定制</span></div>
+    <div><span class="cb"></span><span class="tx">24 小时内交付一份完整、不潦草的成果</span><span class="ps">计时中</span></div>
+  </div>
+
+  <div class="foot">智己工作站 · 由自动迭代任务持续维护 · 本页即项目的「作战地图」</div>
+</div>
+<script>
+(function(){
+  try{
+    var end=new Date('2026-10-12T10:12:00+08:00').getTime();
+    var el=document.getElementById('cd');
+    function tick(){
+      var diff=end-Date.now();
+      if(diff<=0){ el.textContent='00:00:00'; document.getElementById('cdHint').textContent='（已到验收时间）'; return; }
+      var h=Math.floor(diff/3600000),m=Math.floor(diff%3600000/60000),s=Math.floor(diff%60000/1000);
+      function p(n){return String(n).padStart(2,'0');}
+      el.textContent=p(h)+':'+p(m)+':'+p(s);
+    }
+    tick(); setInterval(tick,1000);
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
