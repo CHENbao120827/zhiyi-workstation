@@ -590,6 +590,12 @@ canvas{width:100%;display:block}
         <div class="legend" id="donutLegend"></div>
       </div>
       <div class="card">
+        <div class="card-title">专注热力图 · 近 12 周</div>
+        <canvas id="chartHeat"></canvas>
+        <div class="legend" style="margin-top:6px">■ 少 ────── ■ 多（一格 = 一天）</div>
+        <div class="stat-line" id="heatStats" style="margin-top:8px;text-align:center;font-size:12px;color:var(--dim)"></div>
+      </div>
+      <div class="card">
         <div class="card-title">近 7 日专注分钟</div>
         <canvas id="chartFocus"></canvas>
       </div>
@@ -644,7 +650,8 @@ canvas{width:100%;display:block}
         <div style="font-size:13px;line-height:1.9;margin-top:10px;color:var(--sub)">
           · 双击桌面「启动工作台.bat」即可启动全部服务并打开工作台<br>
           · 开机自启已按你的要求移除，需要时手动启动即可<br>
-          · 数据自动保存在这台电脑（state.json），无需手动导出
+          · 数据自动保存在这台电脑（state.json），无需手动导出<br>
+          · 键盘快捷键：数字 1-9 快速切换页面（输入框内不触发）
         </div>
       </div>
       <div class="card">
@@ -1744,6 +1751,57 @@ function drawLine(){
     ctx.fillText(vals[i],p[0],p[1]-10);
   });
 }
+function heatColor(m){
+  if(m<=0)return 'rgba(56,189,248,0.06)';
+  if(m<15)return 'rgba(56,189,248,0.28)';
+  if(m<30)return 'rgba(56,189,248,0.52)';
+  if(m<60)return 'rgba(37,99,235,0.78)';
+  return '#38bdf8';
+}
+function drawFocusHeatmap(){
+  var c=$('chartHeat'); if(!c)return;
+  var ctx=c.getContext('2d');
+  var W=c.width=c.parentElement.clientWidth-8;
+  var H=c.height=176;
+  ctx.clearRect(0,0,W,H);
+  var fs=(S.focus&&S.focus.secs)||{};
+  var cols=12, cell=10, gap=3;
+  var totalW=cols*(cell+gap)-gap;
+  var x0=Math.max(2,(W-totalW)/2), y0=16;
+  for(var w=0;w<cols;w++){
+    for(var d=0;d<7;d++){
+      var day=new Date();
+      day.setDate(day.getDate()-((cols-1-w)*7+(6-d)));
+      var ds=fmt(day);
+      var mins=Math.round((fs[ds]||0)/60);
+      ctx.fillStyle=heatColor(mins);
+      ctx.fillRect(x0+w*(cell+gap), y0+d*(cell+gap), cell, cell);
+    }
+  }
+  ctx.fillStyle='#8fa6c4'; ctx.font='9px sans-serif'; ctx.textAlign='center';
+  for(var w=0;w<cols;w++){
+    var day=new Date();
+    day.setDate(day.getDate()-(cols-1-w)*7);
+    ctx.fillText((day.getMonth()+1)+'月', x0+w*(cell+gap)+cell/2, y0+7*(cell+gap)+12);
+  }
+  ctx.fillStyle='#5b7ba6'; ctx.font='9px sans-serif'; ctx.textAlign='left';
+  ctx.fillText('今', 2, y0+6*(cell+gap)+4);
+  var stEl=$('heatStats');
+  if(stEl){
+    var wk=0,mo=0,now2=new Date();
+    var mStart=new Date(now2.getFullYear(),now2.getMonth(),1);
+    for(var k in fs){
+      var parts=k.split('-');
+      if(parts.length!==3)continue;
+      var dt=new Date(+parts[0],+parts[1]-1,+parts[2]);
+      var mins=Math.round((fs[k]||0)/60);
+      var diff=now2-dt;
+      if(diff>=0&&diff<7*86400000)wk+=mins;
+      if(dt>=mStart)mo+=mins;
+    }
+    stEl.innerHTML='本周专注 <b style="color:#38bdf8">'+wk+' 分钟</b> · 本月专注 <b style="color:#38bdf8">'+mo+' 分钟</b>';
+  }
+}
 function drawFocusChart(){
   var c=$('chartFocus'); if(!c)return;
   var ctx=c.getContext('2d');
@@ -1821,7 +1879,7 @@ function renderData(){
   var days=S.focus.days||{};
   var total=Object.keys(days).reduce(function(a,k){return a+days[k];},0);
   $('stFocus').textContent=total;
-  drawLine(); drawDonut(); drawFocusChart();
+  drawLine(); drawDonut(); drawFocusChart(); drawFocusHeatmap();
   renderWeekReport(); renderHabitTrend(); renderGoalProg();
 }
 
