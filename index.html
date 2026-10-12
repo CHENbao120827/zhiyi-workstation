@@ -1602,7 +1602,7 @@ document.addEventListener('keydown',function(e){
 var _am=$('btnApplyMin');
 if(_am){_am.addEventListener('click',function(){
   var total=PICK.h*3600+PICK.m*60+PICK.s;
-  if(total<10)total=600;
+  if(total<=0)total=1500;
   DUR.work=total;
   if(!tRunning){tRemain=DUR.work;renderFocus();}
   try{if(S.focus.customSec!==total){S.focus.customSec=total;save();}}catch(e){}
