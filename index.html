@@ -571,6 +571,10 @@ canvas{width:100%;display:block}
         <canvas id="chartDonut"></canvas>
         <div class="legend" id="donutLegend"></div>
       </div>
+      <div class="card">
+        <div class="card-title">近 7 日专注分布</div>
+        <canvas id="chartFocus"></canvas>
+      </div>
     </div>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
       <div class="card">
@@ -1084,7 +1088,8 @@ function renderNews(){
   var items=(src&&src.items&&src.items.length)?src.items:(NEWS_CUR[newsCat]||[]);
   var live=!!(src&&src.live&&src.items&&src.items.length);
   $('newsList').innerHTML=items.map(function(n){
-    return '<div class="nitem"><a href="'+esc(n.u)+'" target="_blank" rel="noopener">'+esc(n.t)+'</a><span class="nsrc">'+esc(n.s||'')+'</span><span class="ndate">'+esc(n.d)+'</span></div>';
+    var _sn=(live&&newsCat==='live')?'新浪要闻':(n.s||'');
+    return '<div class="nitem"><a href="'+esc(n.u)+'" target="_blank" rel="noopener">'+esc(n.t)+'</a><span class="nsrc">'+esc(_sn)+'</span><span class="ndate">'+esc(n.d)+'</span></div>';
   }).join('')||'<div class="empty">暂无资讯，点击右上角「刷新全部」</div>';
   var st=$('newsState');
   if(st){
@@ -1679,6 +1684,41 @@ function drawLine(){
     ctx.fillText(vals[i],p[0],p[1]-10);
   });
 }
+function drawFocusChart(){
+  var c=$('chartFocus'); if(!c)return;
+  var ctx=c.getContext('2d');
+  var W=c.width=c.parentElement.clientWidth-8;
+  var H=c.height=200;
+  ctx.clearRect(0,0,W,H);
+  var fd=(S.focus&&S.focus.days)||{};
+  var days=[],vals=[];
+  for(var i=6;i>=0;i--){
+    var d=new Date(); d.setDate(d.getDate()-i);
+    var ds=fmt(d);
+    days.push(ds.slice(5));
+    vals.push(fd[ds]||0);
+  }
+  var max=Math.max(1,Math.max.apply(null,vals));
+  var padL=26,padR=14,padT=18,padB=30;
+  ctx.strokeStyle='rgba(77,124,255,.08)'; ctx.lineWidth=1;
+  for(var g=0;g<=3;g++){
+    var y=padT+(H-padT-padB)*g/3;
+    ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(W-padR,y);ctx.stroke();
+    ctx.fillStyle='rgba(180,190,220,.55)';ctx.font='11px sans-serif';
+    ctx.textAlign='right';ctx.fillText(Math.round(max*(3-g)/3),padL-6,y+4);
+  }
+  var bw=(W-padL-padR)/days.length;
+  ctx.fillStyle='rgba(77,124,255,.65)';
+  vals.forEach(function(v,k){
+    var x=padL+bw*k+2,h=(H-padT-padB)*v/max;
+    ctx.fillRect(x,H-padB-h,bw-4,h);
+    ctx.fillStyle='rgba(210,220,248,.9)';ctx.textAlign='center';
+    ctx.fillText(v,x+bw/2,H-padB+15);
+    ctx.fillStyle='rgba(160,175,215,.7)';
+    ctx.fillText(days[k],x+bw/2,H-padB+27);
+    ctx.fillStyle='rgba(77,124,255,.65)';
+  });
+}
 function drawDonut(){
   var c=$('chartDonut'); if(!c)return;
   var ctx=c.getContext('2d');
@@ -1720,7 +1760,7 @@ function renderData(){
   var days=S.focus.days||{};
   var total=Object.keys(days).reduce(function(a,k){return a+days[k];},0);
   $('stFocus').textContent=total;
-  drawLine(); drawDonut();
+  drawLine(); drawDonut(); drawFocusChart();
   renderWeekReport(); renderHabitTrend(); renderGoalProg();
 }
 
