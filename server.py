@@ -182,8 +182,16 @@ def _sina_rss(kw):
     with urllib.request.urlopen(req, timeout=8) as r:
         d = json.loads(r.read().decode('utf-8', 'replace'))
     arr = (d.get('result') or {}).get('data') or []
+    # 关键词优先排序：标题含关键词的排前，其余补足（保证实时 + 尽力分类）
+    kw0 = (kw or '').strip()
+    if kw0:
+        hit = [it for it in arr if kw0 in (it.get('title') or '')]
+        rest = [it for it in arr if kw0 not in (it.get('title') or '')]
+        ordered = (hit + rest)[:20]
+    else:
+        ordered = arr[:20]
     parts = ['<rss version="2.0"><channel><title>新浪要闻</title>']
-    for it in arr[:20]:
+    for it in ordered:
         t = _xml_esc((it.get('title') or '').strip())
         u = _xml_esc(it.get('url') or '')
         parts.append('<item><title>%s</title><link>%s</link></item>' % (t, u))
@@ -395,7 +403,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not check_token(self.headers):
                     self._json(401, {'ok': False, 'msg': 'token 无效'})
                     return
-                self._json(200, load_state())
+                _st0 = load_state()
+                _st0['ok'] = True
+                self._json(200, _st0)
                 return
             if route == '/api/open':
                 if not check_token(self.headers):

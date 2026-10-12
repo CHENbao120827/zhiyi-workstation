@@ -702,7 +702,7 @@ function syncPull(){
   fetch(syncBase+'/api/state',{headers:{'X-Token':SYNC_TOKEN}})
     .then(function(r){return r.json();})
     .then(function(j){
-      if(j&&j.ok&&j.data&&typeof j.ts==='number'){
+      if(j&&j.data&&typeof j.ts==='number'){
         if(_lastSyncTs===0){
           if(j.ts>0&&hasRealData(j.data)){ adopt(j.data,j.ts); }        // 云端有真实数据 → 采用
           else if(localHasReal()){ _lastSyncTs=Date.now(); syncPush(); }  // 云端空但本地有 → 把本地推上去
@@ -1714,7 +1714,7 @@ function renderDaily(){
   if(w){ var a=WEAPONS[dailyPick(WEAPONS,'weapon.day')];
     w.innerHTML='<div class="wx-temp" style="font-size:12.5px;margin:4px 0">'+esc(a.n)+'</div>'+
       '<div class="wx-meta">'+esc(a.c)+' · '+esc(a.k)+'</div>'+
-      '<div class="wx-cond" style="margin-top:8px">'+esc(a.d)+'</div>'+
+      '<div class="wx-cond" style="margin-top:8px;font-size:12.5px;line-height:1.9">'+esc(a.d)+'</div>'+
       '<div class="wx-upd">今日军械 · '+esc(a.t)+'</div>'; }
   var b=$('techBox');
   if(b){ var a2=TECHS[dailyPick(TECHS,'tech.day')];
