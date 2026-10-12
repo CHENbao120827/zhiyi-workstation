@@ -280,6 +280,19 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, code, obj):
         self._send(code, json.dumps(obj, ensure_ascii=False), 'application/json; charset=utf-8')
 
+    def _shutdown_all(self):
+        def _do():
+            try:
+                ps = "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -match 'server.py' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+                subprocess.run(['powershell', '-NoProfile', '-EncodedCommand', _ps_encoded(ps)], timeout=15, capture_output=True)
+            except Exception:
+                pass
+            try:
+                os._exit(0)
+            except Exception:
+                pass
+        threading.Timer(1.0, _do).start()
+
     def do_OPTIONS(self):
         self._send(204, '', 'text/plain; charset=utf-8')
 
@@ -295,7 +308,7 @@ class Handler(BaseHTTPRequestHandler):
                 d = json.loads(body)
                 act = d.get('action') or ''
                 if act == 'shutdown':
-                    threading.Timer(1.2, os._exit, [0]).start()
+                    self._shutdown_all()
                     self._json(200, {'ok': True, 'msg': '服务已关闭'})
                     return
                 if act in ('backend_on', 'backend_off', 'cpolar_on', 'cpolar_off'):
@@ -400,7 +413,20 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+def port_in_use(port):
+    try:
+        out = subprocess.run(['netstat', '-ano'], capture_output=True, text=True, timeout=8).stdout
+        for line in out.splitlines():
+            if ':%d ' % port in line and 'LISTENING' in line:
+                return True
+    except Exception:
+        pass
+    return False
+
 def main():
+    if port_in_use(PORT):
+        print('  \u26a0 端口 %d 已被占用（后端可能已在运行），本实例自动退出。' % PORT)
+        sys.exit(0)
     server = ThreadingHTTPServer(('0.0.0.0', PORT), Handler)
     print('')
     print('  \u2726 智己工作站后端已启动（Python ' + sys.version.split()[0] + '）')
