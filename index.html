@@ -289,7 +289,7 @@ select{min-width:120px}
 .note-time{font-size:10.5px;color:var(--dim);flex:none;padding-top:3px;font-family:ui-monospace,Consolas,monospace}
 .focus-card{text-align:center;padding:44px 20px;transition:box-shadow .4s}
 .focus-card.running{box-shadow:0 0 46px rgba(77,124,255,.16),0 0 120px rgba(77,124,255,.06)}
-.focus-card.flash .timer{animation:focusFlash .6s 3}
+.focus-card.flash .timer{animation:focusFlash .6s infinite}
 @keyframes focusFlash{0%,100%{opacity:1}50%{opacity:.25}}
 .timer-wrap{position:relative;width:220px;height:220px;margin:0 auto}
 .ring{position:absolute;inset:0;transform:rotate(-90deg)}
@@ -1554,7 +1554,6 @@ function timerTick(){
   if(tRemain<=0){
     var _fc=document.querySelector('.focus-card');
     if(_fc){_fc.classList.remove('running');_fc.classList.add('flash');}
-    setTimeout(function(){var _f2=document.querySelector('.focus-card');if(_f2)_f2.classList.remove('flash');},2600);
     if(tMode==='work'){
       S.focus.days=S.focus.days||{};
       S.focus.days[today()]=(S.focus.days[today()]||0)+1;
