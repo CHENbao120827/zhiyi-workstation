@@ -992,7 +992,7 @@ var NTABS=[['delta','三角洲','#f5c15e'],['mc','MC 世界','#34d399'],['war','
 function bingNewsUrl(kw){
   var base=(typeof syncBase!=='undefined'&&syncBase)?syncBase:'';
   if(base&&base!==location.origin)return base+'/api/news?kw='+encodeURIComponent(kw);
-  return 'https://api.allorigins.win/raw?url='+encodeURIComponent('https://www.bing.com/news/search?q='+encodeURIComponent(kw)+'&format=rss&setlang=zh-hans&cc=CN');
+  return location.origin+'/api/news?kw='+encodeURIComponent(kw);   // 本机直接走后端（含新浪兜底）
 }
 function parseRSS(xml){
   var items=[];
@@ -1045,7 +1045,7 @@ function fetchNews(cat,force){
     .then(function(r){return r.text();})
     .then(function(xml){ if(parseRSS(xml).length)mark(xml); else throw new Error('empty'); })
     .catch(function(){
-      fetch('/api/news?kw='+encodeURIComponent(NEWS_KEYS[cat]),{cache:'no-store'})
+      fetch('/api/news?kw='+encodeURIComponent(NEWS_KEYS[cat]),{cache:'no-store',headers:{'X-Token':SYNC_TOKEN}})
         .then(function(r){return r.text();})
         .then(function(xml){ if(parseRSS(xml).length)mark(xml); else throw new Error('empty2'); })
         .catch(fail);
