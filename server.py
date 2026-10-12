@@ -9,7 +9,7 @@
   5. GET /api/apps    白名单应用列表
 启动：双击桌面「启动工作台.bat」，或手动运行  python server.py
 """
-import os, sys, json, socket, subprocess, threading, time, re, shutil, urllib.request, urllib.parse
+import os, sys, json, socket, subprocess, threading, time, re, shutil, urllib.request, urllib.parse, hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -382,6 +382,12 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 self._json(200, sys_status())
                 return
+            if route == '/api/version':
+                try:
+                    _vh = hashlib.md5(open(os.path.join(ROOT, 'index.html'), 'rb').read()).hexdigest()[:12]
+                except Exception:
+                    _vh = '0'
+                self._send(200, '{"v":"' + _vh + '"}', 'application/json')
             if route == '/api/ping':
                 self._json(200, {'ok': True, 'host': socket.gethostname(), 'ip': lan_ips()})
                 return

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-v="8e962980d1f8">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +8,25 @@
 if(location.protocol==='file:'){
   try{ location.replace('http://localhost:8600/'); }catch(e){}
 }
+/* 版本自检：每 60s 对比服务器上的 index.html 哈希，不一致即自动刷新（根治旧页面） */
+(function(){
+  var KEY='zhiyi_ver';
+  function check(){
+    try{
+      fetch('/api/version',{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
+        var v='';
+        try{ v=JSON.parse(t).v||''; }catch(e){}
+        if(!v)return;
+        var old='';
+        try{ old=localStorage.getItem(KEY)||''; }catch(e){}
+        if(old&&old!==v){ try{localStorage.setItem(KEY,v);}catch(e){} location.reload(true); }
+        else if(!old){ try{localStorage.setItem(KEY,v);}catch(e){} }
+      }).catch(function(){});
+    }catch(e){}
+  }
+  setInterval(check,60000);
+  setTimeout(check,8000);
+})();
 </script>
 <title>智己工作站 · 个人工作台</title>
 <style>
@@ -1006,18 +1025,18 @@ function shortDate(s){
 }
 function fetchNews(cat,force){
   if(!force){
-    var c=cacheGet('news');
+    var c=cacheGet('news2');
     if(c&&c[cat]&&Date.now()-c[cat].t<30*60*1000){ NEWS[cat]=c[cat]; renderNews(); return; }
   }
   var mark=function(xml){
     var items=parseRSS(xml);
     NEWS[cat]={t:Date.now(),items:(items.length?items:(NEWS_CUR[cat]||[])),live:!!items.length};
-    var c2=cacheGet('news')||{}; c2[cat]=NEWS[cat]; cacheSet('news',c2);
+    var c2=cacheGet('news2')||{}; c2[cat]=NEWS[cat]; cacheSet('news2',c2);
     renderNews();
   };
   var fail=function(){
     NEWS[cat]={t:Date.now(),items:NEWS_CUR[cat]||[],live:false};
-    renderNews();
+    renderNews();  // 失败不写缓存，下次打开会重新尝试实时抓取
   };
   var nu=bingNewsUrl(NEWS_KEYS[cat]);
   var nopt={};
@@ -1701,7 +1720,7 @@ function renderDaily(){
   if(b){ var a2=TECHS[dailyPick(TECHS,'tech.day')];
     b.innerHTML='<div class="wx-temp" style="font-size:12.5px;margin:4px 0">'+esc(a2.n)+'</div>'+
       '<div class="wx-meta">'+esc(a2.c)+'</div>'+
-      '<div class="wx-cond" style="margin-top:8px">'+esc(a2.d)+'</div>'+
+      '<div class="wx-cond" style="margin-top:8px;font-size:12.5px;line-height:1.9">'+esc(a2.d)+'</div>'+
       '<div class="wx-upd">今日科技 · '+esc(a2.t)+'</div>'; }
 }
 /* ---------- 服务控制 ---------- */
