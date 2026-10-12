@@ -173,23 +173,51 @@ def launch_app(key):
 
 # ---------- 新闻代理（服务端抓取，无跨域限制） ----------
 _news_cache = {}
+def _xml_esc(s0):
+    return (s0 or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace("'", '&apos;')
+
+def _sina_rss(kw):
+    url = 'https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&num=20&page=1'
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=8) as r:
+        d = json.loads(r.read().decode('utf-8', 'replace'))
+    arr = (d.get('result') or {}).get('data') or []
+    parts = ['<rss version="2.0"><channel><title>新浪要闻</title>']
+    for it in arr[:20]:
+        t = _xml_esc((it.get('title') or '').strip())
+        u = _xml_esc(it.get('url') or '')
+        parts.append('<item><title>%s</title><link>%s</link></item>' % (t, u))
+    parts.append('</channel></rss>')
+    return ''.join(parts)
+
 def proxy_news(kw):
     now = time.time()
     if kw in _news_cache and now - _news_cache[kw]['t'] < 300:
         return _news_cache[kw]['xml']
-    url = ('https://www.bing.com/news/search?q=' + urllib.parse.quote(kw) +
-           '&format=rss&setlang=zh-hans&cc=CN')
-    req = urllib.request.Request(url, headers={
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
+    sources = [
+        ('bing', 'https://www.bing.com/news/search?q=' + urllib.parse.quote(kw) +
+         '&format=rss&setlang=zh-hans&cc=CN'),
+        ('bing2', 'https://www.bing.com/news/search?q=' + urllib.parse.quote(kw) +
+         '&format=rss&setlang=zh-cn'),
+    ]
+    last = None
+    for name, url in sources:
+        try:
+            req = urllib.request.Request(url, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126 Safari/537.36'})
+            with urllib.request.urlopen(req, timeout=7) as r:
+                xml = r.read().decode('utf-8', 'replace')
+            if '<rss' in xml or '<feed' in xml or '<entry' in xml:
+                _news_cache[kw] = {'t': now, 'xml': xml}
+                return xml
+        except Exception as e:
+            last = e
     try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            xml = r.read().decode('utf-8', 'replace')
-    except Exception as e:
-        raise RuntimeError('news fetch failed: ' + str(e))
-    if '<rss' not in xml:
-        raise RuntimeError('bing returned non-rss (html), use allorigins channel')
-    _news_cache[kw] = {'t': now, 'xml': xml}
-    return xml
+        xml = _sina_rss(kw)
+        _news_cache[kw] = {'t': now, 'xml': xml}
+        return xml
+    except Exception as e2:
+        raise RuntimeError('news fetch failed: ' + str(last) + ' / ' + str(e2))
 
 # ---------- 云端数据存储（这台电脑 = 服务器，多设备同步） ----------
 STATE_FILE = os.path.join(ROOT, 'state.json')

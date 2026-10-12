@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+/* 若直接双击 index.html 打开（file://），自动跳转到本地服务（后端必须在运行） */
+if(location.protocol==='file:'){
+  try{ location.replace('http://localhost:8600/'); }catch(e){}
+}
+</script>
 <title>智己工作站 · 个人工作台</title>
 <style>
 :root{
