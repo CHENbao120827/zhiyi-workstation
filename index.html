@@ -308,6 +308,7 @@ select{min-width:120px}
 .note-item.pinned{background:rgba(56,189,248,.05);border-left:2px solid #38bdf8;padding-left:8px}
 .note-item .pin{cursor:pointer;font-size:12px;color:var(--dim);padding:0 2px;flex:none}
 .note-item .pin:hover{color:#38bdf8}
+.focus-badge{font-size:11px;color:var(--dim);margin:2px 0 10px;letter-spacing:.3px;opacity:.9}
 .focus-card{text-align:center;padding:44px 20px;transition:box-shadow .4s}
 .focus-card.running{box-shadow:0 0 46px rgba(77,124,255,.16),0 0 120px rgba(77,124,255,.06)}
 .focus-card.flash .timer{animation:focusFlash .6s infinite}
@@ -321,6 +322,13 @@ select{min-width:120px}
 .wg-bar{height:6px;border-radius:4px;background:rgba(255,255,255,.07);margin:6px 0 4px;overflow:hidden}
 .wg-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#2563eb,#38bdf8);box-shadow:0 0 10px rgba(56,189,248,.5);transition:width .6s}
 .wg-set{font-size:11px;color:var(--dim)}
+.focus-vs{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
+.fv-item{flex:1;min-width:96px;text-align:center;padding:10px 6px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid var(--line)}
+.fv-item b{display:block;font-size:20px;font-weight:700;color:#38bdf8;line-height:1.3}
+.fv-item span{font-size:10.5px;color:var(--dim)}
+.fv-diff{display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:80px;padding:8px;border-radius:10px;border:1px solid var(--line)}
+.fv-diff b{font-size:18px;font-weight:700}
+.fv-diff span{font-size:10.5px;color:var(--dim)}
 .wg-set input{width:56px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:5px;color:var(--txt);font-size:11px;padding:1px 5px;outline:none}
 .focus-streak{font-size:12px;color:var(--sky);margin:2px 0 8px;letter-spacing:.5px}
 .timer-mode{font-size:11px;color:var(--sub);margin:18px 0 36px;letter-spacing:5px;font-family:ui-monospace,Consolas,monospace}
@@ -586,6 +594,7 @@ canvas{width:100%;display:block}
       <div class="focus-today" id="focusToday">今日专注 · 0 次 · 0 分钟</div>
       <div class="focus-streak" id="focusStreak">🔥 连续专注 0 天</div>
       <div class="week-goal" id="weekGoal"></div>
+      <div class="focus-badge" id="focusBadge"></div>
       <div class="timer-presets" id="timerPresets">
         <button class="preset" data-m="15">15分</button>
         <button class="preset active" data-m="25">25分</button>
@@ -651,6 +660,10 @@ canvas{width:100%;display:block}
       <div class="card">
         <div class="card-title">本周周报 <span class="tag" id="wkRange">本周</span></div>
         <div id="weekReport"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">本周专注 <span class="tag">vs 上周</span></div>
+        <div class="focus-vs" id="focusWeekVs"></div>
       </div>
       <div class="card">
         <div class="card-title">习惯达成率 · 近 6 周</div>
@@ -1694,9 +1707,22 @@ function renderWeekGoal(){
     S.focus=S.focus||{}; S.focus.weekGoal=v; save(); renderWeekGoal();
   });
 }
+function renderFocusBadge(){
+  var el=$('focusBadge'); if(!el)return;
+  var total=0;
+  try{for(var k in (S.focus&&S.focus.secs||{}))total+=(S.focus.secs[k]||0);}catch(e){}
+  var h=Math.floor(total/3600);
+  var lv=[{m:0,n:'🌱 萌芽'},{m:300,n:'🔥 起步'},{m:1200,n:'⚡ 专注者'},{m:3000,n:'🌟 专注大师'},{m:6000,n:'🏆 专注传奇'}];
+  var cur=lv[0],nxt=lv[1];
+  for(var i=0;i<lv.length;i++){ if(total>=lv[i].m){cur=lv[i]; nxt=lv[i+1]||null;} }
+  var txt='🏅 累计专注 '+h+' 小时 · '+cur.n;
+  if(nxt)txt+='（距 '+nxt.n+' 还差 '+Math.ceil((nxt.m-total)/60)+' 分钟）';
+  el.textContent=txt;
+}
 function renderFocusToday(){
   var el=$('focusToday'); if(!el)return;
   renderWeekGoal();
+  renderFocusBadge();
   var stEl=$('focusStreak');
   if(stEl){
     var days=(S.focus&&S.focus.days)||{};
@@ -2020,9 +2046,26 @@ function renderData(){
   var total=Object.keys(days).reduce(function(a,k){return a+days[k];},0);
   $('stFocus').textContent=total;
   drawLine(); drawDonut(); drawFocusChart(); drawFocusHeatmap();
-  renderWeekReport(); renderHabitTrend(); renderGoalProg();
+  renderWeekReport(); renderFocusWeekVs(); renderHabitTrend(); renderGoalProg();
 }
 
+function renderFocusWeekVs(){
+  var el=$('focusWeekVs'); if(!el)return;
+  var now=new Date(), mon=weekMonday(now);
+  var prevMon=new Date(mon); prevMon.setDate(mon.getDate()-7);
+  var m0=fmtDate(mon), p0=fmtDate(prevMon);
+  var secs=(S.focus&&S.focus.secs)||{};
+  var cur=0, prev=0;
+  for(var k in secs){ var v=secs[k]||0; if(k>=m0)cur+=v; else if(k>=p0)prev+=v; }
+  var curMin=Math.round(cur/60), prevMin=Math.round(prev/60);
+  var diff=prevMin?Math.round((curMin-prevMin)/prevMin*100):(curMin?999:0);
+  var up=curMin>=prevMin;
+  var diffTxt=prevMin===0&&curMin>0?'新纪录':(diff===0?'持平':(up?'+'+(diff<999?diff+'%':'∞'):diff+'%'));
+  var col=diff===0?'#38bdf8':(up?'#52c41a':'#ff7875');
+  el.innerHTML='<div class="fv-item"><b>'+curMin+'</b><span>本周 · 分钟</span></div>'
+    +'<div class="fv-item"><b style="color:var(--sub)">'+prevMin+'</b><span>上周 · 分钟</span></div>'
+    +'<div class="fv-diff"><b style="color:'+col+'">'+diffTxt+'</b><span>'+(up?'▲ 较上周':'▼ 较上周')+'</span></div>';
+}
 function fmtDate(d){ var y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'); return y+'-'+m+'-'+dd; }
 function weekMonday(d){ var w=new Date(d); w.setHours(0,0,0,0); var day=w.getDay(); w.setDate(w.getDate()-(day===0?6:day-1)); return w; }
 function renderWeekReport(){
