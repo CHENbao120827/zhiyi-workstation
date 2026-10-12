@@ -9,7 +9,7 @@
   5. GET /api/apps    白名单应用列表
 启动：双击桌面「启动工作台.bat」，或手动运行  python server.py
 """
-import os, sys, json, socket, subprocess, threading, time, re, urllib.request, urllib.parse
+import os, sys, json, socket, subprocess, threading, time, re, shutil, urllib.request, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -217,6 +217,49 @@ def check_token(h):
     return tok == SYNC_TOKEN
 
 # ---------- HTTP 服务 ----------
+
+def _ps_encoded(cmd):
+    import base64
+    return base64.b64encode(cmd.encode('utf-16-le')).decode()
+
+def _run_ps(cmd):
+    try:
+        subprocess.run(['powershell', '-NoProfile', '-EncodedCommand', _ps_encoded(cmd)],
+                       timeout=12, capture_output=True)
+        return True
+    except Exception:
+        return False
+
+def _startup_dir():
+    ap = os.environ.get('APPDATA') or os.path.expanduser('~')
+    return os.path.join(ap, 'Microsoft\Windows\Start Menu\Programs\Startup')
+
+def _lnk(kind):
+    return os.path.join(_startup_dir(), '智己工作站-后端.lnk' if kind == 'backend' else 'cpolar隧道.lnk')
+
+def autostart_setup(kind, on):
+    lnk = _lnk(kind)
+    if not on:
+        try:
+            if os.path.exists(lnk):
+                os.remove(lnk)
+        except Exception:
+            pass
+        return not os.path.exists(lnk)
+    if kind == 'backend':
+        exe = shutil.which('py') or shutil.which('python') or 'py'
+        cmd = "$ws=New-Object -ComObject WScript.Shell;$l=$ws.CreateShortcut('%s');$l.TargetPath='%s';$l.Arguments='%s';$l.WorkingDirectory='%s';$l.WindowStyle=7;$l.Save()" % (
+            lnk, exe, os.path.join(ROOT, 'server.py'), ROOT)
+    else:
+        exe = shutil.which('cpolar') or 'cpolar'
+        cmd = "$ws=New-Object -ComObject WScript.Shell;$l=$ws.CreateShortcut('%s');$l.TargetPath='%s';$l.Arguments='http -region cn 8600';$l.WorkingDirectory='%s';$l.WindowStyle=7;$l.Save()" % (
+            lnk, exe, ROOT)
+    return _run_ps(cmd) and os.path.exists(lnk)
+
+def service_status():
+    return {'ok': True, 'backend': os.path.exists(_lnk('backend')),
+            'cpolar': os.path.exists(_lnk('cpolar')), 'pid': os.getpid()}
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -243,6 +286,27 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             u = urllib.parse.urlparse(self.path)
+            if u.path == '/api/service':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
+                ln = int(self.headers.get('Content-Length') or 0)
+                body = self.rfile.read(ln).decode('utf-8', 'replace')
+                d = json.loads(body)
+                act = d.get('action') or ''
+                if act == 'shutdown':
+                    threading.Timer(1.2, os._exit, [0]).start()
+                    self._json(200, {'ok': True, 'msg': '服务已关闭'})
+                    return
+                if act in ('backend_on', 'backend_off', 'cpolar_on', 'cpolar_off'):
+                    kind, on = act.split('_')[0], act.endswith('_on')
+                    ok = autostart_setup(kind, on)
+                    st = service_status()
+                    st['ok'] = ok
+                    self._json(200, st)
+                    return
+                self._json(400, {'ok': False, 'msg': 'bad action'})
+                return
             if u.path != '/api/state':
                 self._json(404, {'ok': False, 'msg': 'not found'})
                 return
@@ -287,6 +351,12 @@ class Handler(BaseHTTPRequestHandler):
                 qs = urllib.parse.parse_qs(u.query)
                 key = (qs.get('app') or [''])[0]
                 self._json(200, launch_app(key))
+                return
+            if route == '/api/service':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
+                self._json(200, service_status())
                 return
             if route == '/api/news':
                 if not check_token(self.headers):

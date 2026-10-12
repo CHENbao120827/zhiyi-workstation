@@ -294,6 +294,13 @@ canvas{width:100%;display:block}
   .clock .sec{font-size:16px}
   .linkgrid{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
 }
+/* ---------- 设置 ---------- */
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.set-sub{font-size:11px;color:var(--dim);margin-top:3px}
+.btn-set{padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer;color:#fff;background:linear-gradient(135deg,rgba(77,124,255,.9),rgba(56,120,255,.65));border:1px solid transparent;font-family:inherit;transition:.15s;min-width:64px}
+.btn-set:hover{filter:brightness(1.15)}
+.btn-danger{background:rgba(234,102,104,.2);color:#ff9a9a;border:1px solid rgba(234,102,104,.45)}
+.btn-danger:hover{background:rgba(234,102,104,.32);color:#fff}
 </style>
 </head>
 <body>
@@ -310,6 +317,7 @@ canvas{width:100%;display:block}
       <button class="navb" data-view="focus">专注</button>
       <button class="navb" data-view="data">数据</button>
       <button class="navb" data-view="launchpad">马上起飞</button>
+      <button class="navb" data-view="settings">设置</button>
     </nav>
     <div class="sys"><span class="sysdot"></span>LOCAL · 西安</div>
   </header>
@@ -534,9 +542,53 @@ canvas{width:100%;display:block}
       </div>
     </div>
     <div class="news-note">一键起飞本机程序 · 想加新程序随时接入</div>
-  </section>
+  
+  
+</section>
 </div>
 
+<!-- ============ 设置 ============ -->
+  <section id="view-settings" class="view">
+    <h2>设置</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+      <div class="card">
+        <div class="card-title">服务控制 <span class="tag" id="svcState">检测中</span></div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
+          <div class="set-row">
+            <div>
+              <div style="font-size:14px">开机自启 · 后端</div>
+              <div class="set-sub">开机自动运行智己工作站后端（含网页与服务）</div>
+            </div>
+            <button id="btnAutoBackend" class="btn-set" onclick="toggleAuto('backend')">检测中</button>
+          </div>
+          <div class="set-row">
+            <div>
+              <div style="font-size:14px">开机自启 · cpolar 隧道</div>
+              <div class="set-sub">开机自动开启外网隧道（免费版重启后地址会变）</div>
+            </div>
+            <button id="btnAutoCpolar" class="btn-set" onclick="toggleAuto('cpolar')">检测中</button>
+          </div>
+          <div class="set-row" style="border-top:1px solid var(--line);padding-top:12px">
+            <div>
+              <div style="font-size:14px">一键关闭服务</div>
+              <div class="set-sub">停止后端进程，本机与外网将无法访问（需重新运行「启动工作台」恢复）</div>
+            </div>
+            <button id="btnShutdown" class="btn-set btn-danger" onclick="shutdownSrv()">关闭</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">云端与入口 <span class="tag">说明</span></div>
+        <div style="font-size:13px;line-height:1.8;margin-top:10px;color:var(--sub)">
+          · 云端 = 这台电脑（端口 8600），数据存于 state.json<br>
+          · 本机：http://localhost:8600<br>
+          · 局域网：http://192.168.1.213:8600<br>
+          · 外网：https://52803163.r2.cpolar.cn（隧道在线时有效）<br>
+          · GitHub Pages 备用（精简版）：chenbao120827.github.io/zhiyi-workstation
+        </div>
+      </div>
+    </div>
+  </section>
 <div class="toolbar">
   <span id="syncState" style="font-size:11px;color:var(--dim);letter-spacing:1px">云端连接中…</span>
   <input id="syncUrlInput" placeholder="云端地址(隧道URL,可留空)" style="width:190px;margin-left:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:6px;color:var(--txt);font-size:11px;padding:3px 8px;outline:none">
@@ -651,7 +703,7 @@ function gb(n){ return Math.round(n/1073741824*10)/10; }
 function mb(n){ return Math.round(n/1048576); }
 
 /* ---------- 视图切换 ---------- */
-var VIEWS=['dash','todo','habits','goals','notes','focus','data','launchpad'];
+var VIEWS=['dash','todo','habits','goals','notes','focus','data','launchpad','settings'];
 var cur='dash';
 document.querySelectorAll('.navb[data-view]').forEach(function(n){
   n.addEventListener('click',function(){
@@ -664,6 +716,7 @@ document.querySelectorAll('.navb[data-view]').forEach(function(n){
     if(v==='todo')renderTasks();
     if(v==='focus')renderFocus();
     if(v==='data')renderData();
+    if(v==='settings')loadService();
     try{
       if(v==='dash'){ history.replaceState(null,'',location.pathname); }
       else{ history.replaceState(null,'',location.pathname+'#'+v); }
@@ -1624,17 +1677,65 @@ function dailyPick(list,key){
 function renderDaily(){
   var w=$('weaponBox');
   if(w){ var a=WEAPONS[dailyPick(WEAPONS,'weapon.day')];
-    w.innerHTML='<div class="wx-temp" style="font-size:15px;margin:4px 0">'+esc(a.n)+'</div>'+
+    w.innerHTML='<div class="wx-temp" style="font-size:13px;margin:4px 0">'+esc(a.n)+'</div>'+
       '<div class="wx-meta">'+esc(a.c)+' · '+esc(a.k)+'</div>'+
       '<div class="wx-cond" style="margin-top:8px">'+esc(a.d)+'</div>'+
       '<div class="wx-upd">今日军械 · '+esc(a.t)+'</div>'; }
   var b=$('techBox');
   if(b){ var a2=TECHS[dailyPick(TECHS,'tech.day')];
-    b.innerHTML='<div class="wx-temp" style="font-size:15px;margin:4px 0">'+esc(a2.n)+'</div>'+
+    b.innerHTML='<div class="wx-temp" style="font-size:13px;margin:4px 0">'+esc(a2.n)+'</div>'+
       '<div class="wx-meta">'+esc(a2.c)+'</div>'+
       '<div class="wx-cond" style="margin-top:8px">'+esc(a2.d)+'</div>'+
       '<div class="wx-upd">今日科技 · '+esc(a2.t)+'</div>'; }
 }
+/* ---------- 服务控制 ---------- */
+function svcApi(method, body){
+  var opt={method:method,headers:{'X-Token':SYNC_TOKEN}};
+  if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  return fetch((syncBase||location.origin)+'/api/service',opt);
+}
+function loadService(){
+  var s=$('svcState');
+  svcApi('GET').then(function(r){return r.json()}).then(function(d){
+    if(!d||!d.ok)throw 0;
+    var b=$('btnAutoBackend'), c=$('btnAutoCpolar');
+    if(b){b.textContent=d.backend?'已开启':'已关闭';}
+    if(c){c.textContent=d.cpolar?'已开启':'已关闭';}
+    if(s)s.textContent='在线 · PID '+d.pid;
+  }).catch(function(){ if(s)s.textContent='未连接后端'; });
+}
+function toggleAuto(kind){
+  var b=$('btnAuto'+(kind==='backend'?'Backend':'Cpolar'));
+  if(b)b.textContent='处理中...';
+  svcApi('GET').then(function(r){return r.json()}).then(function(d){
+    var cur=kind==='backend'?d.backend:d.cpolar;
+    return svcApi('POST',{action:kind+(cur?'_off':'_on')}).then(function(r){return r.json()});
+  }).then(function(d){
+    var now=kind==='backend'?d.backend:d.cpolar;
+    var x=$('btnAuto'+(kind==='backend'?'Backend':'Cpolar'));
+    if(x)x.textContent=now?'已开启':'已关闭';
+    if($('svcState'))$('svcState').textContent='在线 · PID '+d.pid;
+  }).catch(function(){ var x=$('btnAuto'+(kind==='backend'?'Backend':'Cpolar')); if(x)x.textContent='失败'; });
+}
+function shutdownSrv(){
+  if(!confirm('确定要关闭后端服务吗？关闭后本机与外网将无法访问，需要重新运行「启动工作台.bat」恢复。'))return;
+  var b=$('btnShutdown'); if(b)b.textContent='关闭中...';
+  svcApi('POST',{action:'shutdown'}).then(function(){ if(b)b.textContent='已关闭'; })
+    .catch(function(){ if(b)b.textContent='已关闭'; });
+  setTimeout(function(){ var s=$('svcState'); if(s)s.textContent='服务已停止'; }, 2000);
+}
+/* ---------- hash 直达视图 ---------- */
+(function(){
+  function goHash(){
+    var h=location.hash.slice(1);
+    if(h&&VIEWS.indexOf(h)>-1){
+      var b=document.querySelector('.navb[data-view="'+h+'"]');
+      if(b)b.click();
+    }
+  }
+  window.addEventListener('hashchange',goHash);
+  if(location.hash)goHash();
+})();
 /* ---------- 启动 ---------- */
 function renderAll(){
   renderWeather(); renderNews(); renderLinks(); renderCal();
