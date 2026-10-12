@@ -432,8 +432,7 @@ class Handler(BaseHTTPRequestHandler):
                 qs = urllib.parse.parse_qs(u.query)
                 kw = (qs.get('kw') or [''])[0]
                 if not kw:
-                    self._send(400, 'need kw', 'text/plain; charset=utf-8')
-                    return
+                    kw = ''
                 try:
                     xml = proxy_news(kw)
                     self._send(200, xml, 'application/xml; charset=utf-8')

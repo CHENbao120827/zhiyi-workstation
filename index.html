@@ -63,7 +63,7 @@ body::before{
 .mainnav{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .navb{
   padding:8px 15px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--sub);
-  background:transparent;border:1px solid transparent;transition:.18s;font-family:inherit;text-decoration:none;
+  background:transparent;border:1px solid transparent;transition:.18s;font-family:inherit;text-decoration:none;opacity:.8;
 }
 .navb:hover{color:var(--txt);background:var(--card2);border-color:var(--line)}
 .navb.active{color:#fff;background:linear-gradient(135deg,rgba(77,124,255,.9),rgba(56,120,255,.65));border-color:transparent;font-weight:600;
@@ -287,14 +287,21 @@ select{min-width:120px}
 .note-item:last-child{border-bottom:none}
 .note-text{flex:1;font-size:13px;line-height:1.75;word-break:break-all;white-space:pre-wrap}
 .note-time{font-size:10.5px;color:var(--dim);flex:none;padding-top:3px;font-family:ui-monospace,Consolas,monospace}
-.focus-card{text-align:center;padding:44px 20px}
-.timer{font-size:84px;font-weight:200;letter-spacing:5px;font-variant-numeric:tabular-nums;color:#fff;font-family:ui-monospace,Consolas,monospace}
-.timer-mode{font-size:11px;color:var(--sub);margin:6px 0 26px;letter-spacing:5px;font-family:ui-monospace,Consolas,monospace}
+.focus-card{text-align:center;padding:44px 20px;transition:box-shadow .4s}
+.focus-card.running{box-shadow:0 0 46px rgba(77,124,255,.16),0 0 120px rgba(77,124,255,.06)}
+.focus-card.flash .timer{animation:focusFlash .6s infinite}
+@keyframes focusFlash{0%,100%{opacity:1}50%{opacity:.25}}
+.timer-wrap{position:relative;width:220px;height:220px;margin:0 auto}
+.ring{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:8}
+.ring-fg{fill:none;stroke:var(--sky);stroke-width:8;stroke-linecap:round;stroke-dasharray:628;stroke-dashoffset:628;transition:stroke-dashoffset 1s linear;filter:drop-shadow(0 0 6px rgba(77,124,255,.55))}
+.timer-wrap .timer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:52px;letter-spacing:4px;font-weight:200;font-variant-numeric:tabular-nums;color:#fff;font-family:ui-monospace,Consolas,monospace}
+.timer-mode{font-size:11px;color:var(--sub);margin:12px 0 30px;letter-spacing:5px;font-family:ui-monospace,Consolas,monospace}
 .timer-mode.work{color:var(--sky)}
-.timer-btns{display:flex;gap:12px;justify-content:center}
-.timer-btns button{padding:10px 30px;font-size:14px;border-radius:10px}
-.timer-presets{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
-.preset{padding:6px 14px;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:8px;cursor:pointer;font-size:12px;transition:.15s}
+.timer-btns{display:flex;gap:18px;justify-content:center;margin-top:4px}
+.timer-btns button{padding:11px 34px;font-size:14px;border-radius:10px}
+.timer-presets{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+.preset{padding:8px 18px;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:8px;cursor:pointer;font-size:12px;transition:.15s}
 .preset:hover{border-color:var(--sky);color:var(--sky)}
 .preset.active{background:rgba(77,124,255,.15);border-color:var(--sky);color:var(--sky)}
 #customMin{width:86px;padding:6px 8px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;font-size:12px;outline:none}
@@ -348,7 +355,7 @@ canvas{width:100%;display:block}
       <button class="navb" data-view="notes">灵感</button>
       <button class="navb" data-view="data">数据</button>
       <button class="navb" data-view="launchpad">马上起飞</button>
-      <button class="navb" data-view="settings">设置</button>
+      <button class="navb" data-view="settings">说明</button>
     </nav>
     <div class="sys"><span class="sysdot"></span>LOCAL · 西安</div>
   </header>
@@ -507,7 +514,13 @@ canvas{width:100%;display:block}
   <section id="view-focus" class="view">
     <h2>专注计时</h2>
     <div class="card focus-card">
-      <div class="timer" id="timer">25:00</div>
+      <div class="timer-wrap">
+        <svg class="ring" viewBox="0 0 220 220">
+          <circle class="ring-bg" cx="110" cy="110" r="100"></circle>
+          <circle class="ring-fg" id="ringFg" cx="110" cy="110" r="100"></circle>
+        </svg>
+        <div class="timer" id="timer">25:00</div>
+      </div>
       <div class="timer-mode work" id="timerMode">FOCUS</div>
       <div class="timer-presets" id="timerPresets">
         <button class="preset" data-m="15">15分</button>
@@ -588,32 +601,14 @@ canvas{width:100%;display:block}
 
 <!-- ============ 设置 ============ -->
   <section id="view-settings" class="view">
-    <h2>设置</h2>
+    <h2>说明</h2>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
       <div class="card">
-        <div class="card-title">服务控制 <span class="tag" id="svcState">检测中</span></div>
-        <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
-          <div class="set-row">
-            <div>
-              <div style="font-size:14px">开机自启 · 后端</div>
-              <div class="set-sub">开机自动运行智己工作站后端（含网页与服务）</div>
-            </div>
-            <button id="btnAutoBackend" class="btn-set" onclick="toggleAuto('backend')">检测中</button>
-          </div>
-          <div class="set-row">
-            <div>
-              <div style="font-size:14px">开机自启 · cpolar 隧道</div>
-              <div class="set-sub">开机自动开启外网隧道（免费版重启后地址会变）</div>
-            </div>
-            <button id="btnAutoCpolar" class="btn-set" onclick="toggleAuto('cpolar')">检测中</button>
-          </div>
-          <div class="set-row" style="border-top:1px solid var(--line);padding-top:12px">
-            <div>
-              <div style="font-size:14px">一键关闭服务</div>
-              <div class="set-sub">停止后端进程，本机与外网将无法访问（需重新运行「启动工作台」恢复）</div>
-            </div>
-            <button id="btnShutdown" class="btn-set btn-danger" onclick="shutdownSrv()">关闭</button>
-          </div>
+        <div class="card-title">如何启动 <span class="tag">使用</span></div>
+        <div style="font-size:13px;line-height:1.9;margin-top:10px;color:var(--sub)">
+          · 双击桌面「启动工作台.bat」即可启动全部服务并打开工作台<br>
+          · 开机自启已按你的要求移除，需要时手动启动即可<br>
+          · 数据自动保存在这台电脑（state.json），无需手动导出
         </div>
       </div>
       <div class="card">
@@ -759,7 +754,7 @@ document.querySelectorAll('.navb[data-view]').forEach(function(n){
     if(v==='todo')renderTasks();
     if(v==='focus')renderFocus();
     if(v==='data')renderData();
-    if(v==='settings')loadService();
+    if(v==='settings'){}
     try{
       if(v==='dash'){ history.replaceState(null,'',location.pathname); }
       else{ history.replaceState(null,'',location.pathname+'#'+v); }
@@ -969,40 +964,45 @@ document.querySelectorAll('.lp-btn').forEach(function(b){
 /* ---------- 新闻（实时引擎：Bing RSS 经代理，失败回退内置精选） ---------- */
 var NEWS_CUR={
   delta:[
-    {t:'《三角洲行动》国服 DAU 突破 5800 万，刷新历史峰值（上线两周年）',u:'http://m.toutiao.com/group/7695005093938070066/',s:'南方都市报',d:'10-10'},
-    {t:'10 月 10 日更新公告：季中平衡性调整 & 极星守望即将上线',u:'https://www.taptap.cn/app/330259/topic?type=official',s:'TapTap 官方',d:'10-10'},
-    {t:'「群星赛季」进行中：全新典藏与赛季内容一览',u:'https://df.qq.com/index.shtml',s:'官方站点',d:'进行中'},
-    {t:'三角洲行动更新公告合集（黑潮爆破平衡调整等）',u:'https://newgame.17173.com/game-newslist-4076418.html',s:'17173',d:'10-05'}
+    {t:'《三角洲行动》10月9日更新：1v1 决斗模式与季中平衡调整上线',u:'https://deltaforce.garena.com/en/news/announcement',s:'Delta Force 官方',d:'10-12'},
+    {t:'《三角洲行动》全新「群星赛季」正式开启，洲年庆福利进行中',u:'https://df.qq.com/index.shtml',s:'腾讯官方',d:'10-10'},
+    {t:'《三角洲行动》在洲洲LAND，蹦起来！活动报道',u:'https://newgame.17173.com/game-newslist-1035786.html?news_type=1',s:'17173',d:'10-03'},
+    {t:'《三角洲行动》9月29日更新公告丨洲年活动上新，武器捆绑包上架',u:'https://newgame.17173.com/game-newslist-1035786.html?news_type=1',s:'17173',d:'09-29'},
+    {t:'《三角洲行动》二周年庆典开启！限定三角券与联动干员登场',u:'https://deltaforce.garena.com/zh_tw/news/all',s:'Garena 官方',d:'09-22'}
   ],
   mc:[
-    {t:'「Tiny Takeover」更新上线：MC 史上最可爱的幼年生物大修',u:'https://www.minecraft.net/zh-hant/updates/tiny-takeover-drop',s:'Minecraft 官方',d:'10-10'},
-    {t:'Java 版 26.3 快照 9：Realms 渲染与模拟距离可分开配置',u:'https://www.minecraft.net/ja-jp/article/minecraft-26-3-snapshot-9',s:'Minecraft 官方',d:'08-17'},
-    {t:'基岩版 26.50：Wilderness Bound 野外探险更新上线',u:'https://www.minecraft.net/ja-jp/article/minecraft--bedrock-edition-26-50-changelog',s:'Minecraft 官方',d:'09-15'},
-    {t:'2026 新内容前瞻：新维度、冰洞与全新生物',u:'https://www.iesdouyin.com/share/video/7690053407105975872',s:'我的世界资讯',d:'09-27'}
+    {t:'《我的世界》Switch 2 版 10 月 27 日推出，数字版玩家可限时免费升级',u:'http://www.3dmgame.com/games/minecraft/news/',s:'3DM 游戏网',d:'10-08'},
+    {t:'「Tiny Takeover」更新上线：MC 史上最可爱的幼年生物大修',u:'https://www.minecraft.net/zh-hans/updates/tiny-takeover-drop',s:'Minecraft 官方',d:'10-12'},
+    {t:'Minecraft Bedrock 1.26.40 更新说明发布（实验性技术调整）',u:'https://learn.microsoft.com/zh-cn/minecraft/creator/documents/update1.26.40',s:'Microsoft Learn',d:'10-11'},
+    {t:'Minecraft 26.4 快照：Vulkan 成为默认渲染器，迷雾重做',u:'https://www.mcrpg.com/articles/minecraft-snapshot-roundup',s:'MCRPG',d:'10-02'},
+    {t:'Wilderness Bound「荒野之约」更新：森林探险与营火故事',u:'https://www.minecraft.net/zh-hans/updates/minecraft-updates-timeline-and-evolution',s:'Minecraft 官方',d:'09-15'}
   ],
   war:[
-    {t:'2026 年 10 月上旬国防部例行新闻发布',u:'http://www.81.cn/yw_208727/16491929.html',s:'中国军网',d:'10-10'},
-    {t:'军事热点：南部战区海空域战备警巡等要闻',u:'http://www.81.cn/ChinaMilitary/rdxw_208665/index.html',s:'中国军网',d:'10-05'},
-    {t:'军情动态：黄海实弹射击警告、海警维权巡航等',u:'https://mil.huanqiu.com/world/',s:'环球网军事',d:'10-10'},
-    {t:'央视军事：055 型驱逐舰遵义舰远海实战化训练报道',u:'http://m.toutiao.com/group/7694974517730411008/',s:'央视军事',d:'10-11'}
+    {t:'泽连斯基称支持「能源停火」，乌武装部队已收到相关命令',u:'http://military.cnr.cn/gj/index.html',s:'央广网军事',d:'10-12'},
+    {t:'俄方称打击乌数据中心并新控制 4 处居民点',u:'http://www.news.cn/milpro/?f=pad',s:'新华网',d:'10-12'},
+    {t:'胡塞武装称也门多地遭沙特主导的多国联军空袭',u:'http://m.toutiao.com/group/7695760867685646848/',s:'央视新闻',d:'10-12'},
+    {t:'沙特利雅得机场再遭袭，胡塞武装称对沙特设施发动多轮打击',u:'http://m.toutiao.com/group/7695753345394278938/',s:'央视新闻',d:'10-12'},
+    {t:'俄国防部：俄军 9 月接收超 1 万件各型装备，含苏-57 与苏-35S',u:'http://military.cnr.cn/gj/20261007/t20261007_527835622.shtml',s:'央广网军事',d:'10-07'}
   ],
   arms:[
-    {t:'法国升级版 M51 战略弹道导弹首次潜射试射',u:'http://m.toutiao.com/group/7694879267464741391/',s:'参考消息',d:'10-10'},
-    {t:'俄国防部：俄军 9 月接收超 1 万件各型装备',u:'http://military.cnr.cn/gj/20261007/t20261007_527835622.shtml',s:'央广网',d:'10-07'},
-    {t:'美海军第六代舰载机 F/A-XX 花落波音（合同超 200 亿美元）',u:'http://m.toutiao.com/group/7695231808606126628/',s:'新华/全民新视野',d:'10-11'},
-    {t:'军事锐评：俄「末日武器」母艇首次海试等',u:'https://military.cnr.cn/zt/wgfgjq/jsrp/',s:'央广网',d:'10-07'}
+    {t:'我国已织就低空反无人天网：激光、弹炮结合、微波构成反无人机「铁三角」',u:'https://www.sina.cn/media/1728148193',s:'央广军事',d:'10-08'},
+    {t:'抢占「智」高点：鹰击-21、东风-17、东风-26D 展现高超声速导弹规模化发展',u:'http://m.toutiao.com/group/7695608320551289378/',s:'中国军视网',d:'10-12'},
+    {t:'日本拟新建约 130 座弹药库，欲引进超 5 万台无人装备',u:'http://tv.81.cn/zgjs/fwxgc/index.html',s:'中国军网',d:'10-05'},
+    {t:'俄军接收超 1 万件装备：炮兵弹药、航空导弹与反无人机弹药等',u:'http://military.cnr.cn/gj/20261007/t20261007_527835622.shtml',s:'央广网军事',d:'10-07'},
+    {t:'BAE 获 2.3 亿美元合同：为美海军陆战队生产 32 辆 ACV 救援车',u:'https://thedefensepost.com/',s:'The Defense Post',d:'10-12'}
   ],
   tech:[
-    {t:'IT之家：实时科技资讯主站',u:'https://www.ithome.com',s:'IT之家',d:'实时'},
-    {t:'OpenAI 首份青少年报告与安全机制质疑',u:'https://www.ithome.com/list/index_1.html',s:'IT之家滚动',d:'10-08'},
-    {t:'科技热榜：苹果折叠 iPhone、AI 新品等热门话题',u:'https://rebang.today/tech',s:'今日热榜',d:'10-10'},
-    {t:'OpenAI 与 Synopsys 合作开发芯片设计专用模型',u:'https://www.techsir.com/k/',s:'科技先生',d:'10-03'}
+    {t:'2026 世界顶尖科学家论坛将落地上海临港，聚焦「范式变革」与半导体前沿',u:'https://www.shobserver.cn/sgh/detail?id=4073097',s:'上观新闻',d:'10-12'},
+    {t:'上海智能制造论坛：工业控制的「大脑」有了中国方案',u:'http://m.toutiao.com/group/7695725112586175002/',s:'环球网',d:'10-12'},
+    {t:'我国研发新型锂电正极材料，可提升快充效率与耐用性',u:'http://www.cas.cn/cm/',s:'中国科学院',d:'10-08'},
+    {t:'英特尔、高通、AMD 接力调涨 CPU 价格，AI 抢产能致晶圆代工报价走高',u:'https://www.iesdouyin.com/share/video/7695719753616231690',s:'半导体行业资讯',d:'10-12'},
+    {t:'湖南国资筹建商业航天公司：200 亿注册资本，首批拟录用人员公示',u:'https://www.iesdouyin.com/share/video/7695627995679165750',s:'商业航天资讯',d:'10-12'}
   ]
 };
 var NEWS_KEYS={delta:'三角洲行动',mc:'我的世界 Minecraft',war:'军事 军情',arms:'武器装备',tech:'科技 人工智能'};
 var NEWS={};
 var newsCat='delta';
-var NTABS=[['delta','三角洲','#f5c15e'],['mc','MC 世界','#34d399'],['war','战争','#f47070'],['arms','军械','#fbbf24'],['tech','科技','#38bdf8']];
+var NTABS=[['delta','三角洲','#f5c15e'],['mc','MC 世界','#34d399'],['war','战争','#f47070'],['arms','军械','#fbbf24'],['tech','科技','#38bdf8'],['live','实时','#a78bfa']];
 function bingNewsUrl(kw){
   var base=(typeof syncBase!=='undefined'&&syncBase)?syncBase:'';
   if(base&&base!==location.origin)return base+'/api/news?kw='+encodeURIComponent(kw);
@@ -1026,7 +1026,7 @@ function parseRSS(xml){
         if(nn==='Source')src=kids[j].textContent.trim();
       }
       if(!src){ try{ src=new URL(u).hostname.replace(/^www\./,''); }catch(e){} }
-      if(t&&u)items.push({t:t,u:u,s:src,d:shortDate(pd)});
+      if(t&&u)items.push({t:t,u:u,s:src,d:(shortDate(pd)||'今天')});
     }
   }catch(e){}
   return items;
@@ -1038,34 +1038,27 @@ function shortDate(s){
   return m[3].slice(2)+'-'+(M[m[2]]||'');
 }
 function fetchNews(cat,force){
-  if(!force){
-    var c=cacheGet('news2');
-    if(c&&c[cat]&&Date.now()-c[cat].t<5*60*1000){ NEWS[cat]=c[cat]; renderNews(); return; }
+  if(cat==='live'){   // 实时要闻：新浪滚动（全国最新）
+    if(!force){
+      var c=cacheGet('news2');
+      if(c&&c[cat]&&Date.now()-c[cat].t<5*60*1000){ NEWS[cat]=c[cat]; renderNews(); return; }
+    }
+    var mark=function(xml){
+      var items=parseRSS(xml);
+      NEWS[cat]={t:Date.now(),items:items.slice(0,10),live:!!items.length};
+      var c2=cacheGet('news2')||{}; c2[cat]=NEWS[cat]; cacheSet('news2',c2);
+      renderNews();
+    };
+    var fail=function(){ NEWS[cat]={t:Date.now(),items:[],live:false}; renderNews(); };
+    fetch('/api/news?kw=',{cache:'no-store',headers:{'X-Token':SYNC_TOKEN}})
+      .then(function(r){return r.text();})
+      .then(function(xml){ if(parseRSS(xml).length)mark(xml); else throw new Error('empty'); })
+      .catch(fail);
+    return;
   }
-  var mark=function(xml){
-    var items=parseRSS(xml);
-    var cur=NEWS_CUR[cat]||[];
-    var mix=items.length?cur.slice(0,2).concat(items.slice(0,5)):cur;
-    NEWS[cat]={t:Date.now(),items:mix,live:!!items.length};
-    var c2=cacheGet('news2')||{}; c2[cat]=NEWS[cat]; cacheSet('news2',c2);
-    renderNews();
-  };
-  var fail=function(){
-    NEWS[cat]={t:Date.now(),items:NEWS_CUR[cat]||[],live:false};
-    renderNews();  // 失败不写缓存，下次打开会重新尝试实时抓取
-  };
-  var nu=bingNewsUrl(NEWS_KEYS[cat]);
-  var nopt={};
-  if(nu.indexOf('/api/news')>-1)nopt={headers:{'X-Token':SYNC_TOKEN}};
-  fetch(nu,nopt)
-    .then(function(r){return r.text();})
-    .then(function(xml){ if(parseRSS(xml).length)mark(xml); else throw new Error('empty'); })
-    .catch(function(){
-      fetch('/api/news?kw='+encodeURIComponent(NEWS_KEYS[cat]),{cache:'no-store',headers:{'X-Token':SYNC_TOKEN}})
-        .then(function(r){return r.text();})
-        .then(function(xml){ if(parseRSS(xml).length)mark(xml); else throw new Error('empty2'); })
-        .catch(fail);
-    });
+  // 分类板块：内置精选（每板块内容不同，来源多样带日期）
+  NEWS[cat]={t:Date.now(),items:NEWS_CUR[cat]||[],live:false};
+  renderNews();
 }
 function fetchNewsAll(){ Object.keys(NEWS_KEYS).forEach(function(c){fetchNews(c,true);}); }
 function renderNews(){
@@ -1515,6 +1508,8 @@ if(S.focus&&S.focus.customMin){setWorkMin(S.focus.customMin);}
 function renderFocus(){
   var m=Math.floor(tRemain/60),s=tRemain%60;
   $('timer').textContent=pad(m)+':'+pad(s);
+  var ring=$('ringFg');
+  if(ring){var C=628;ring.style.strokeDashoffset=(C*(1-tRemain/DUR.work)).toFixed(2)+'px';}
   var tm=$('timerMode');
   tm.textContent=tMode==='work'?'FOCUS':'BREAK';
   tm.className='timer-mode'+(tMode==='work'?' work':'');
@@ -1536,6 +1531,8 @@ function chime(){
 function timerTick(){
   tRemain--;
   if(tRemain<=0){
+    var _fc=document.querySelector('.focus-card');
+    if(_fc){_fc.classList.remove('running');_fc.classList.add('flash');}
     if(tMode==='work'){
       S.focus.days=S.focus.days||{};
       S.focus.days[today()]=(S.focus.days[today()]||0)+1;
@@ -1560,12 +1557,15 @@ if(_am){_am.addEventListener('click',function(){
   setWorkMin(v);
 });}
 $('btnTimer').addEventListener('click',function(){
-  if(tRunning){ clearInterval(tInt); tRunning=false; }
-  else{ tRunning=true; clearInterval(tInt); tInt=setInterval(timerTick,1000); }
+  var fc=document.querySelector('.focus-card');
+  if(fc)fc.classList.remove('flash');
+  if(tRunning){ clearInterval(tInt); tRunning=false; if(fc)fc.classList.remove('running'); }
+  else{ tRunning=true; clearInterval(tInt); tInt=setInterval(timerTick,1000); if(fc)fc.classList.add('running'); }
   renderFocus();
 });
 $('btnTimerReset').addEventListener('click',function(){
   clearInterval(tInt); tRunning=false;
+  var fc=document.querySelector('.focus-card'); if(fc){fc.classList.remove('running');fc.classList.remove('flash');}
   tMode='work'; tRemain=DUR.work; renderFocus();
 });
 
