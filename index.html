@@ -305,6 +305,9 @@ select{min-width:120px}
 .note-item:last-child{border-bottom:none}
 .note-text{flex:1;font-size:13px;line-height:1.75;word-break:break-all;white-space:pre-wrap}
 .note-time{font-size:10.5px;color:var(--dim);flex:none;padding-top:3px;font-family:ui-monospace,Consolas,monospace}
+.note-item.pinned{background:rgba(56,189,248,.05);border-left:2px solid #38bdf8;padding-left:8px}
+.note-item .pin{cursor:pointer;font-size:12px;color:var(--dim);padding:0 2px;flex:none}
+.note-item .pin:hover{color:#38bdf8}
 .focus-card{text-align:center;padding:44px 20px;transition:box-shadow .4s}
 .focus-card.running{box-shadow:0 0 46px rgba(77,124,255,.16),0 0 120px rgba(77,124,255,.06)}
 .focus-card.flash .timer{animation:focusFlash .6s infinite}
@@ -314,6 +317,11 @@ select{min-width:120px}
 .ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:8}
 .ring-fg{fill:none;stroke:var(--sky);stroke-width:8;stroke-linecap:round;stroke-dasharray:628;stroke-dashoffset:628;transition:stroke-dashoffset 1s linear;filter:drop-shadow(0 0 6px rgba(77,124,255,.55))}
 .timer-wrap .timer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:52px;letter-spacing:4px;font-weight:200;font-variant-numeric:tabular-nums;color:#fff;font-family:ui-monospace,Consolas,monospace}
+.week-goal{font-size:12px;color:var(--sub);margin:2px 0 10px;letter-spacing:.3px;text-align:left}
+.wg-bar{height:6px;border-radius:4px;background:rgba(255,255,255,.07);margin:6px 0 4px;overflow:hidden}
+.wg-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#2563eb,#38bdf8);box-shadow:0 0 10px rgba(56,189,248,.5);transition:width .6s}
+.wg-set{font-size:11px;color:var(--dim)}
+.wg-set input{width:56px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:5px;color:var(--txt);font-size:11px;padding:1px 5px;outline:none}
 .focus-streak{font-size:12px;color:var(--sky);margin:2px 0 8px;letter-spacing:.5px}
 .timer-mode{font-size:11px;color:var(--sub);margin:18px 0 36px;letter-spacing:5px;font-family:ui-monospace,Consolas,monospace}
 .timer-mode.work{color:var(--sky)}
@@ -577,6 +585,7 @@ canvas{width:100%;display:block}
       <div class="timer-mode work" id="timerMode">FOCUS</div>
       <div class="focus-today" id="focusToday">今日专注 · 0 次 · 0 分钟</div>
       <div class="focus-streak" id="focusStreak">🔥 连续专注 0 天</div>
+      <div class="week-goal" id="weekGoal"></div>
       <div class="timer-presets" id="timerPresets">
         <button class="preset" data-m="15">15分</button>
         <button class="preset active" data-m="25">25分</button>
@@ -1608,12 +1617,18 @@ $('goalList').addEventListener('click',function(e){
 function renderNotes(){
   var el=$('noteList');
   if(!S.notes.length){ el.innerHTML='<div class="empty">灵感稍纵即逝，想到就记下来</div>'; return; }
-  el.innerHTML=S.notes.map(function(n){
+  var sorted=S.notes.slice().sort(function(a,b){return (b.pin?1:0)-(a.pin?1:0)||b.ts-a.ts;});
+  el.innerHTML=sorted.map(function(n){
     var d=new Date(n.ts);
-    return '<div class="note-item"><span class="note-text">'+esc(n.text)+'</span>'
+    return '<div class="note-item'+(n.pin?' pinned':'')+'"><span class="note-text">'+esc(n.text)+'</span>'
       +'<span class="note-time">'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</span>'
+      +'<span class="pin" data-id="'+n.id+'" title="置顶/取消">'+(n.pin?'📌':'📍')+'</span>'
       +'<span class="del" data-id="'+n.id+'">✕</span></div>';
   }).join('');
+}
+function pinNote(id){
+  var n=S.notes.find(function(x){return x.id===id;});
+  if(n){n.pin=!n.pin; save(); renderNotes();}
 }
 function addNote(){
   var v=$('noteInput').value.trim(); if(!v)return;
@@ -1623,8 +1638,9 @@ function addNote(){
 $('btnAddNote').addEventListener('click',addNote);
 $('noteInput').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))addNote(); });
 $('noteList').addEventListener('click',function(e){
+  var p=e.target.closest('.pin'); if(p){ pinNote(p.getAttribute('data-id')); return; }
   var d=e.target.closest('.del'); if(!d)return;
-  S.notes=S.notes.filter(function(n){return n.id!==d.getAttribute('data-id');}); save();
+  S.notes=S.notes.filter(function(n){return n.id!==d.getAttribute('data-id');}); save(); renderNotes();
 });
 
 /* ---------- 专注 ---------- */
@@ -1654,8 +1670,33 @@ if(S.focus&&S.focus.customSec){
   PICK.h=Math.floor(_cs/3600);PICK.m=Math.floor(_cs%3600/60);PICK.s=_cs%60;
   DUR.work=_cs;tRemain=_cs;renderFocus();renderPicker();
 }
+function weekStart(){
+  var d=new Date(); d.setHours(0,0,0,0);
+  var dow=(d.getDay()+6)%7;
+  d.setDate(d.getDate()-dow);
+  return d;
+}
+function renderWeekGoal(){
+  var el=$('weekGoal'); if(!el)return;
+  var goal=(S.focus&&S.focus.weekGoal)||300;
+  var ws=weekStart();
+  var secs=0;
+  try{for(var k in (S.focus&&S.focus.secs||{})){ if(k>=fmt(ws))secs+=(S.focus.secs[k]||0); }}catch(e){}
+  var cur=Math.round(secs/60);
+  var pct=Math.min(100,Math.round(cur/goal*100));
+  var over=cur>goal?'<b style="color:#52c41a"> · 超额 '+Math.round(cur-goal)+' 分钟</b>':'';
+  el.innerHTML='本周专注 <b style="color:#38bdf8">'+cur+'</b> / '+goal+' 分钟 · '+pct+'%'+over
+    +'<div class="wg-bar"><i style="width:'+pct+'%"></i></div>'
+    +'<div class="wg-set">周目标 <input id="wgSet" type="number" min="30" max="5000" step="10" value="'+goal+'"> 分钟</div>';
+  var inp=$('wgSet');
+  if(inp)inp.addEventListener('change',function(){
+    var v=Math.max(30,Math.min(5000,parseInt(inp.value,10)||300));
+    S.focus=S.focus||{}; S.focus.weekGoal=v; save(); renderWeekGoal();
+  });
+}
 function renderFocusToday(){
   var el=$('focusToday'); if(!el)return;
+  renderWeekGoal();
   var stEl=$('focusStreak');
   if(stEl){
     var days=(S.focus&&S.focus.days)||{};
