@@ -305,6 +305,8 @@ select{min-width:120px}
 .preset:hover{border-color:var(--sky);color:var(--sky)}
 .preset.active{background:rgba(77,124,255,.15);border-color:var(--sky);color:var(--sky)}
 #btnNoise.active{background:rgba(34,197,94,.15);border-color:#34d399;color:#34d399}
+.focus-today{margin-top:14px;text-align:center;font-size:12px;color:var(--dim);letter-spacing:1px}
+.focus-today b{color:var(--accent);font-weight:600}
 .break-presets{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:24px;flex-wrap:wrap}
 .bplab{font-size:11px;color:var(--dim);letter-spacing:3px;margin-right:4px}
 .break-presets .preset{border-color:rgba(52,211,153,.35)}
@@ -532,6 +534,7 @@ canvas{width:100%;display:block}
         <div class="timer" id="timer">25:00</div>
       </div>
       <div class="timer-mode work" id="timerMode">FOCUS</div>
+      <div class="focus-today" id="focusToday">今日专注 · 0 次 · 0 分钟</div>
       <div class="timer-presets" id="timerPresets">
         <button class="preset" data-m="15">15分</button>
         <button class="preset active" data-m="25">25分</button>
@@ -582,7 +585,7 @@ canvas{width:100%;display:block}
         <div class="legend" id="donutLegend"></div>
       </div>
       <div class="card">
-        <div class="card-title">近 7 日专注分布</div>
+        <div class="card-title">近 7 日专注分钟</div>
         <canvas id="chartFocus"></canvas>
       </div>
     </div>
@@ -1548,7 +1551,14 @@ if(S.focus&&S.focus.customSec){
   PICK.h=Math.floor(_cs/3600);PICK.m=Math.floor(_cs%3600/60);PICK.s=_cs%60;
   DUR.work=_cs;tRemain=_cs;renderFocus();renderPicker();
 }
+function renderFocusToday(){
+  var el=$('focusToday'); if(!el)return;
+  var c=(S.focus.days&&S.focus.days[today()])||0;
+  var m=Math.round(((S.focus.secs&&S.focus.secs[today()])||0)/60);
+  el.innerHTML='今日专注 · <b>'+c+' 次</b> · <b>'+m+' 分钟</b>';
+}
 function renderFocus(){
+  renderFocusToday();
   var m=Math.floor(tRemain/60),s=tRemain%60;
   $('timer').textContent=pad(m)+':'+pad(s);
   var ring=$('ringFg');
@@ -1579,8 +1589,10 @@ function timerTick(){
     if(tMode==='work'){
       S.focus.days=S.focus.days||{};
       S.focus.days[today()]=(S.focus.days[today()]||0)+1;
+       S.focus.secs=S.focus.secs||{};
+       S.focus.secs[today()]=(S.focus.secs[today()]||0)+Math.round(DUR.work);
       save();
-      chime(); toast('专注完成，休息 5 分钟');
+      chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); renderFocusToday();
       tMode='brk';
     }else{
       chime(); toast('休息结束，开始新一轮专注');
@@ -1719,12 +1731,13 @@ function drawFocusChart(){
   var H=c.height=200;
   ctx.clearRect(0,0,W,H);
   var fd=(S.focus&&S.focus.days)||{};
+  var fs=(S.focus&&S.focus.secs)||{};
   var days=[],vals=[];
   for(var i=6;i>=0;i--){
     var d=new Date(); d.setDate(d.getDate()-i);
     var ds=fmt(d);
     days.push(ds.slice(5));
-    vals.push(fd[ds]||0);
+    vals.push(Math.round((fs[ds]||0)/60));
   }
   var max=Math.max(1,Math.max.apply(null,vals));
   var padL=26,padR=14,padT=18,padB=30;
