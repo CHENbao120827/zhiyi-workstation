@@ -268,6 +268,13 @@ select{min-width:120px}
 .habit-block{margin-bottom:18px}
 .habit-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .habit-name{font-size:13.5px;font-weight:600;flex:1}
+.hc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}
+.hc-e{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:var(--dim);position:relative}
+.hc-e.on{color:#38bdf8;background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.45)}
+.hc-e.on i{position:absolute;bottom:5px;width:5px;height:5px;border-radius:50%;background:#38bdf8;box-shadow:0 0 8px rgba(56,189,248,.9)}
+.hc-e.today{border-color:rgba(77,124,255,.9);box-shadow:0 0 10px rgba(77,124,255,.35)}
+.hc-e.empty{visibility:hidden}
+.hc-l{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11px;color:var(--sub);letter-spacing:1px;padding:2px 2px 0}
 .habit-streak{font-size:11px;color:var(--sky);background:rgba(56,189,248,.08);padding:2px 10px;border-radius:20px;border:1px solid var(--line)}
 .habit-grid{display:grid;grid-template-columns:repeat(7,minmax(26px,1fr));gap:5px;max-width:560px}
 .hcell{aspect-ratio:1;border-radius:6px;background:rgba(22,34,60,.4);cursor:pointer;transition:.12s;border:1px solid transparent}
@@ -276,6 +283,10 @@ select{min-width:120px}
 .hcell.today-outline{border-color:rgba(120,150,255,.5)}
 .week-labels{display:grid;grid-template-columns:repeat(7,minmax(26px,1fr));gap:5px;max-width:560px;margin-bottom:4px}
 .week-labels span{font-size:10px;color:var(--dim);text-align:center}
+.goal-ov{display:flex;align-items:center;gap:16px;padding:6px 2px}
+.goal-ov-txt{display:flex;flex-direction:column;gap:2px}
+.goal-ov-txt b{font-size:24px;font-weight:700;color:#38bdf8}
+.goal-ov-txt span{font-size:12px;color:var(--sub)}
 .goal-item{padding:13px 0;border-bottom:1px dashed rgba(77,124,255,.08)}
 .goal-item:last-child{border-bottom:none}
 .goal-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -513,11 +524,25 @@ canvas{width:100%;display:block}
       </div>
       <div id="habitList"></div>
     </div>
+    <div class="card" style="margin-top:14px">
+      <div class="card-title">本月打卡日历 <span class="tag">聚合视图</span><span id="hcStats" style="margin-left:auto;font-size:11px;color:var(--dim)"></span></div>
+      <div class="hc-grid" id="habitCal"></div>
+    </div>
   </section>
 
   <!-- ============ 目标 ============ -->
   <section id="view-goals" class="view">
     <h2>目标管理</h2>
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">目标达成率 <span class="tag">整体进度</span></div>
+      <div class="goal-ov">
+        <svg viewBox="0 0 120 120" width="104" height="104">
+          <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8"></circle>
+          <circle id="goalOvRing" cx="60" cy="60" r="48" fill="none" stroke="#38bdf8" stroke-width="8" stroke-linecap="round" stroke-dasharray="301.6" stroke-dashoffset="301.6" transform="rotate(-90 60 60)"></circle>
+        </svg>
+        <div class="goal-ov-txt"><b id="goalOvNum">0%</b><span id="goalOvSub">0 / 0 已完成</span></div>
+      </div>
+    </div>
     <div class="card">
       <div class="add-row">
         <input id="goalTitle" type="text" placeholder="目标名称，如：完成论文初稿">
@@ -1463,6 +1488,7 @@ function toggleHabitDay(id,d){
   var i=S.habitLog[id].indexOf(d);
   if(i>-1)S.habitLog[id].splice(i,1); else S.habitLog[id].push(d);
   save();
+  renderHabitCal();
 }
 function streakOf(id){
   var log=S.habitLog[id]||[];
@@ -1471,6 +1497,32 @@ function streakOf(id){
   var n=0;
   while(log.indexOf(fmt(d))>-1){n++;d.setDate(d.getDate()-1);}
   return n;
+}
+function renderHabitCal(){
+  var el=$('habitCal'); if(!el)return;
+  var t=today().split('-');
+  var y=+t[0], m=+t[1];
+  var first=new Date(y,m-1,1);
+  var lead=(first.getDay()+6)%7;
+  var days=new Date(y,m,0).getDate();
+  function hasAny(dStr){
+    for(var k in (S.habitLog||{})){ if((S.habitLog[k]||[]).indexOf(dStr)>-1)return true; }
+    return false;
+  }
+  var tStr=today();
+  var wk='<div class="hc-l"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>';
+  var grid='';
+  for(var i=0;i<lead;i++)grid+='<div class="hc-e empty"></div>';
+  var cnt=0;
+  for(var d=1;d<=days;d++){
+    var ds=fmt(new Date(y,m-1,d));
+    var on=hasAny(ds);
+    if(on)cnt++;
+    var isT=(ds===tStr);
+    grid+='<div class="hc-e'+(on?' on':'')+(isT?' today':'')+'" title="'+ds+'">'+d+(on?'<i></i>':'')+'</div>';
+  }
+  el.innerHTML=wk+grid;
+  var st=$('hcStats'); if(st)st.textContent='本月打卡 '+cnt+' 天 · '+m+' 月';
 }
 function renderHabits(){
   var el=$('habitList');
@@ -1511,8 +1563,18 @@ $('habitList').addEventListener('click',function(e){
 
 /* ---------- 目标 ---------- */
 function daysLeft(target){ return Math.ceil((new Date(target+'T00:00:00')-new Date())/86400000); }
+function updateGoalOv(){
+  var ring=$('goalOvRing'); if(!ring)return;
+  var tot=S.goals.length, done=S.goals.filter(function(g){return g.done;}).length;
+  var pct=tot?Math.round(done/tot*100):0;
+  var C=301.6;
+  ring.style.strokeDashoffset=C*(1-pct/100);
+  var n=$('goalOvNum'); if(n)n.textContent=pct+'%';
+  var s=$('goalOvSub'); if(s)s.textContent=done+' / '+tot+' 已完成';
+}
 function renderGoals(){
   var el=$('goalList');
+  updateGoalOv();
   if(!S.goals.length){ el.innerHTML='<div class="empty">立一个目标，给它一个日期，然后看着它一点点长出来</div>'; return; }
   el.innerHTML=S.goals.map(function(g){
     var d=daysLeft(g.target);
@@ -2088,7 +2150,7 @@ function shutdownSrv(){
 function renderAll(){
   renderWeather(); renderNews(); renderLinks(); renderCal();
   renderDaily(); renderOverview();
-  renderMiniTodo(); renderTasks(); renderHabits(); renderGoals(); renderNotes(); renderFocus();
+  renderMiniTodo(); renderTasks(); renderHabits(); renderHabitCal(); renderGoals(); renderNotes(); renderFocus();
   if(cur==='data')renderData();
 }
 tickClock(); setInterval(tickClock,1000);
