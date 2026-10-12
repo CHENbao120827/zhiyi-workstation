@@ -194,7 +194,14 @@ def _sina_rss(kw):
     for it in ordered:
         t = _xml_esc((it.get('title') or '').strip())
         u = _xml_esc(it.get('url') or '')
-        parts.append('<item><title>%s</title><link>%s</link></item>' % (t, u))
+        pd = ''
+        try:
+            ct = int(it.get('ctime') or 0)
+            if ct:
+                pd = time.strftime('%a, %d %b %Y %H:%M:%S +0800', time.localtime(ct))
+        except Exception:
+            pass
+        parts.append('<item><title>%s</title><link>%s</link>%s</item>' % (t, u, ('<pubDate>%s</pubDate>' % pd) if pd else ''))
     parts.append('</channel></rss>')
     return ''.join(parts)
 
@@ -274,7 +281,7 @@ def _run_ps(cmd):
 
 def _startup_dir():
     ap = os.environ.get('APPDATA') or os.path.expanduser('~')
-    return os.path.join(ap, 'Microsoft\Windows\Start Menu\Programs\Startup')
+    return os.path.join(ap, 'Microsoft\\Windows\\Start Menu\\Programs\\Startup')
 
 def _lnk(kind):
     return os.path.join(_startup_dir(), '智己工作站-后端.lnk' if kind == 'backend' else 'cpolar隧道.lnk')

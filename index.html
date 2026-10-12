@@ -305,6 +305,10 @@ select{min-width:120px}
 .preset:hover{border-color:var(--sky);color:var(--sky)}
 .preset.active{background:rgba(77,124,255,.15);border-color:var(--sky);color:var(--sky)}
 #btnNoise.active{background:rgba(34,197,94,.15);border-color:#34d399;color:#34d399}
+.focus-log{margin-top:16px;padding-top:12px;border-top:1px solid rgba(56,189,248,.12);max-width:340px;margin-left:auto;margin-right:auto;text-align:left}
+.focus-log .lg-h{font-size:10px;color:var(--dim);letter-spacing:4px;text-align:center;margin-bottom:8px}
+.focus-log .lg-row{display:flex;justify-content:space-between;font-size:11px;color:var(--txt);padding:3px 2px;opacity:.85}
+.focus-log .lg-row span{color:var(--dim)}
 .focus-today{margin-top:14px;text-align:center;font-size:12px;color:var(--dim);letter-spacing:1px}
 .focus-today b{color:var(--accent);font-weight:600}
 .break-presets{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:24px;flex-wrap:wrap}
@@ -561,7 +565,8 @@ canvas{width:100%;display:block}
         <button id="btnTimer" class="primary">开始</button>
         <button id="btnTimerReset">重置</button>
       </div>
-      <div class="focus-stats">今日专注 <b id="focusToday">0</b> 次 · 累计 <b id="focusTotal">0</b> 次</div>
+      <div class="focus-stats">累计专注 <b id="focusAll">0</b> 次 · <b id="focusAllMin">0</b> 分钟</div>
+      <div class="focus-log" id="focusLog"></div>
     </div>
   </section>
 
@@ -1556,6 +1561,23 @@ function renderFocusToday(){
   var c=(S.focus.days&&S.focus.days[today()])||0;
   var m=Math.round(((S.focus.secs&&S.focus.secs[today()])||0)/60);
   el.innerHTML='今日专注 · <b>'+c+' 次</b> · <b>'+m+' 分钟</b>';
+  var all=0,allMin=0;
+  try{for(var k in (S.focus.days||{}))all+=(S.focus.days[k]||0);}catch(e){}
+  try{for(var k2 in (S.focus.secs||{}))allMin+=Math.round((S.focus.secs[k2]||0)/60);}catch(e){}
+  var fa=$('focusAll'); if(fa)fa.textContent=all;
+  var fam=$('focusAllMin'); if(fam)fam.textContent=allMin;
+  renderFocusLog();
+}
+function renderFocusLog(){
+  var el=$('focusLog'); if(!el)return;
+  var log=(S.focus&&S.focus.log)||[];
+  if(!log.length){el.innerHTML='<div class="lg-h">最近专注</div><div class="lg-row"><span>暂无记录，开始第一次专注吧</span></div>';return;}
+  var rows=log.slice(0,5).map(function(x){
+    var dt=new Date(x.t||Date.now());
+    var p=function(v){return (v<10?'0':'')+v;};
+    return '<div class="lg-row"><span>'+p(dt.getHours())+':'+p(dt.getMinutes())+'</span>'+'<span>'+x.m+' 分钟</span></div>';
+  }).join('');
+  el.innerHTML='<div class="lg-h">最近专注</div>'+rows;
 }
 function renderFocus(){
   renderFocusToday();
@@ -1567,10 +1589,6 @@ function renderFocus(){
   tm.textContent=tMode==='work'?'FOCUS':'BREAK';
   tm.className='timer-mode'+(tMode==='work'?' work':'');
   $('btnTimer').textContent=tRunning?'暂停':'开始';
-  var days=S.focus.days||{};
-  var total=Object.keys(days).reduce(function(a,k){return a+days[k];},0);
-  $('focusToday').textContent=days[today()]||0;
-  $('focusTotal').textContent=total;
 }
 function chime(){
   try{
@@ -1591,6 +1609,8 @@ function timerTick(){
       S.focus.days[today()]=(S.focus.days[today()]||0)+1;
        S.focus.secs=S.focus.secs||{};
        S.focus.secs[today()]=(S.focus.secs[today()]||0)+Math.round(DUR.work);
+       S.focus.log=S.focus.log||[]; S.focus.log.unshift({t:Date.now(),m:Math.round(DUR.work/60)});
+       if(S.focus.log.length>30)S.focus.log.length=30;
       save();
       chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); renderFocusToday();
       tMode='brk';
@@ -1956,6 +1976,16 @@ function shutdownSrv(){
       if(b)b.click();
     }
   }
+  document.addEventListener('keydown',function(e){
+    if(e.ctrlKey||e.metaKey||e.altKey)return;
+    var tag=(e.target&&e.target.tagName||'').toLowerCase();
+    if(tag==='input'||tag==='textarea'||(e.target&&e.target.isContentEditable))return;
+    var n=parseInt(e.key,10);
+    if(!isNaN(n)&&n>=1&&n<=9){
+      var all=document.querySelectorAll('.navb[data-view]');
+      if(n<=all.length)all[n-1].click();
+    }
+  });
   window.addEventListener('hashchange',goHash);
   if(location.hash)goHash();
 })();
