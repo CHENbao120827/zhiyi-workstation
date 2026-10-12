@@ -1108,7 +1108,7 @@ function renderClockExtra(){
   var toYear=Math.round((new Date(n.getFullYear()+1,0,1)-start)/daySec);
   var dow=n.getDay(), daysToMon=(8-dow)%7;
   var lunar='';
-  try{ lunar=' · 农历 '+new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{month:'long',day:'numeric'}).format(n); }catch(e){}
+  try{ var md=new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{month:'long',day:'numeric'}).format(n); var tg='甲乙丙丁戊己庚辛壬癸',dz='子丑寅卯辰巳午未申酉戌亥',sx='鼠牛虎兔龙蛇马羊猴鸡狗猪',yy=n.getFullYear(); lunar=' · 农历 '+tg[(yy-4)%10]+dz[(yy-4)%12]+sx[(yy-4)%12]+'年'+md; }catch(e){}
   var h=n.getHours();
   var tip=h<5?'夜深了，早点休息，明天更高效':(h<8?'晨间黄金期 · 适合规划今日':(h<12?'上午专注窗口 · 先攻克最难的任务':(h<14?'午间 · 小憩 15 分钟，下午更清醒':(h<17?'下午适合协作与创作':(h<19?'傍晚 · 起来活动一下，转换状态':(h<22?'晚间 · 复盘今日，规划明天':'睡前 · 放下屏幕，准备入睡'))))));
   el.innerHTML=
@@ -1624,13 +1624,13 @@ function dailyPick(list,key){
 function renderDaily(){
   var w=$('weaponBox');
   if(w){ var a=WEAPONS[dailyPick(WEAPONS,'weapon.day')];
-    w.innerHTML='<div class="wx-temp" style="font-size:20px;margin:4px 0">'+esc(a.n)+'</div>'+
+    w.innerHTML='<div class="wx-temp" style="font-size:15px;margin:4px 0">'+esc(a.n)+'</div>'+
       '<div class="wx-meta">'+esc(a.c)+' · '+esc(a.k)+'</div>'+
       '<div class="wx-cond" style="margin-top:8px">'+esc(a.d)+'</div>'+
       '<div class="wx-upd">今日军械 · '+esc(a.t)+'</div>'; }
   var b=$('techBox');
   if(b){ var a2=TECHS[dailyPick(TECHS,'tech.day')];
-    b.innerHTML='<div class="wx-temp" style="font-size:20px;margin:4px 0">'+esc(a2.n)+'</div>'+
+    b.innerHTML='<div class="wx-temp" style="font-size:15px;margin:4px 0">'+esc(a2.n)+'</div>'+
       '<div class="wx-meta">'+esc(a2.c)+'</div>'+
       '<div class="wx-cond" style="margin-top:8px">'+esc(a2.d)+'</div>'+
       '<div class="wx-upd">今日科技 · '+esc(a2.t)+'</div>'; }
