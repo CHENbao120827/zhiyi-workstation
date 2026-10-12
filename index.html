@@ -305,6 +305,10 @@ select{min-width:120px}
 .preset:hover{border-color:var(--sky);color:var(--sky)}
 .preset.active{background:rgba(77,124,255,.15);border-color:var(--sky);color:var(--sky)}
 #btnNoise.active{background:rgba(34,197,94,.15);border-color:#34d399;color:#34d399}
+.break-presets{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:24px;flex-wrap:wrap}
+.bplab{font-size:11px;color:var(--dim);letter-spacing:3px;margin-right:4px}
+.break-presets .preset{border-color:rgba(52,211,153,.35)}
+.break-presets .preset.active{background:rgba(52,211,153,.14);border-color:#34d399;color:#34d399}
 .picker{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:30px;flex-wrap:wrap}
 .pcol{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 16px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--card);transition:.15s;user-select:none;min-width:64px}
 .pcol.sel{border-color:var(--sky);box-shadow:0 0 0 3px rgba(77,124,255,.15);background:rgba(77,124,255,.08)}
@@ -534,6 +538,12 @@ canvas{width:100%;display:block}
         <button class="preset" data-m="45">45分</button>
         <button class="preset" data-m="60">60分</button>
         <button id="btnNoise" class="preset">白噪音</button>
+      </div>
+      <div class="break-presets" id="breakPresets">
+        <span class="bplab">休息</span>
+        <button class="preset" data-b="5">5分</button>
+        <button class="preset active" data-b="10">10分</button>
+        <button class="preset" data-b="15">15分</button>
       </div>
       <div class="picker" id="picker">
         <div class="pcol" data-f="h"><span class="pval" id="pvH">00</span><span class="plab">时</span></div>
@@ -1526,6 +1536,13 @@ function setWorkMin(m){
   PICK.h=Math.floor(m/60);PICK.m=m%60;PICK.s=0;renderPicker();
 }
 if(S.focus&&S.focus.customMin){setWorkMin(S.focus.customMin);}
+if(S.focus&&S.focus.breakMin){
+  DUR.brk=S.focus.breakMin*60;
+  _bps.forEach(function(y){
+    if(parseInt(y.getAttribute('data-b'),10)===S.focus.breakMin){y.classList.add('active');}
+    else{y.classList.remove('active');}
+  });
+}
 if(S.focus&&S.focus.customSec){
   var _cs=S.focus.customSec;
   PICK.h=Math.floor(_cs/3600);PICK.m=Math.floor(_cs%3600/60);PICK.s=_cs%60;
@@ -1576,6 +1593,17 @@ function timerTick(){
 }
 document.querySelectorAll('#timerPresets .preset[data-m]').forEach(function(x){
   x.addEventListener('click',function(){setWorkMin(parseInt(x.getAttribute('data-m'),10)||25);});
+});
+/* 休息时长预设 */
+var _bps=document.querySelectorAll('#breakPresets .preset');
+_bps.forEach(function(x){
+  x.addEventListener('click',function(){
+    var m=parseInt(x.getAttribute('data-b'),10)||5;
+    DUR.brk=m*60;
+    try{if(S.focus.breakMin!==m){S.focus.breakMin=m;save();}}catch(e){}
+    _bps.forEach(function(y){y.classList.toggle('active',y===x);});
+    toast('休息时长 '+m+' 分钟');
+  });
 });
 /* 拨轮：时/分/秒（PICK 已在顶部声明） */
 function renderPicker(){
