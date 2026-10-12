@@ -296,17 +296,23 @@ select{min-width:120px}
 .ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:8}
 .ring-fg{fill:none;stroke:var(--sky);stroke-width:8;stroke-linecap:round;stroke-dasharray:628;stroke-dashoffset:628;transition:stroke-dashoffset 1s linear;filter:drop-shadow(0 0 6px rgba(77,124,255,.55))}
 .timer-wrap .timer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:52px;letter-spacing:4px;font-weight:200;font-variant-numeric:tabular-nums;color:#fff;font-family:ui-monospace,Consolas,monospace}
-.timer-mode{font-size:11px;color:var(--sub);margin:12px 0 30px;letter-spacing:5px;font-family:ui-monospace,Consolas,monospace}
+.timer-mode{font-size:11px;color:var(--sub);margin:18px 0 36px;letter-spacing:5px;font-family:ui-monospace,Consolas,monospace}
 .timer-mode.work{color:var(--sky)}
-.timer-btns{display:flex;gap:18px;justify-content:center;margin-top:4px}
-.timer-btns button{padding:11px 34px;font-size:14px;border-radius:10px}
-.timer-presets{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+.timer-btns{display:flex;gap:20px;justify-content:center;margin-top:14px}
+.timer-btns button{padding:11px 36px;font-size:14px;border-radius:10px}
+.timer-presets{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:34px}
 .preset{padding:8px 18px;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:8px;cursor:pointer;font-size:12px;transition:.15s}
 .preset:hover{border-color:var(--sky);color:var(--sky)}
 .preset.active{background:rgba(77,124,255,.15);border-color:var(--sky);color:var(--sky)}
-#customMin{width:86px;padding:6px 8px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;font-size:12px;outline:none}
-#customMin:focus{border-color:rgba(120,150,255,.5)}
-.focus-stats{margin-top:24px;font-size:12px;color:var(--sub)}
+#btnNoise.active{background:rgba(34,197,94,.15);border-color:#34d399;color:#34d399}
+.picker{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:30px;flex-wrap:wrap}
+.pcol{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 16px;border:1px solid var(--line);border-radius:10px;cursor:pointer;background:var(--card);transition:.15s;user-select:none;min-width:64px}
+.pcol.sel{border-color:var(--sky);box-shadow:0 0 0 3px rgba(77,124,255,.15);background:rgba(77,124,255,.08)}
+.pval{font-size:28px;font-weight:200;color:#fff;font-family:ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums;line-height:1.2}
+.plab{font-size:10px;color:var(--dim);letter-spacing:2px}
+.psep{font-size:24px;color:var(--dim);font-weight:200}
+.picker-hint{font-size:11px;color:var(--dim);margin-top:14px;letter-spacing:1px}
+.focus-stats{margin-top:38px;font-size:12px;color:var(--sub)}
 .focus-stats b{color:var(--sky);font-size:14px;font-family:ui-monospace,Consolas,monospace}
 .stats-row{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
 .mini-stat .num{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;color:#fff;font-family:ui-monospace,Consolas,monospace}
@@ -527,9 +533,17 @@ canvas{width:100%;display:block}
         <button class="preset active" data-m="25">25分</button>
         <button class="preset" data-m="45">45分</button>
         <button class="preset" data-m="60">60分</button>
-        <input id="customMin" type="number" min="1" max="180" placeholder="自定义(分)">
+        <button id="btnNoise" class="preset">白噪音</button>
+      </div>
+      <div class="picker" id="picker">
+        <div class="pcol" data-f="h"><span class="pval" id="pvH">00</span><span class="plab">时</span></div>
+        <span class="psep">:</span>
+        <div class="pcol" data-f="m"><span class="pval" id="pvM">25</span><span class="plab">分</span></div>
+        <span class="psep">:</span>
+        <div class="pcol" data-f="s"><span class="pval" id="pvS">00</span><span class="plab">秒</span></div>
         <button id="btnApplyMin" class="preset">应用</button>
       </div>
+      <div class="picker-hint">点击选中时/分/秒 · 滚轮或 ↑↓ 键微调 · 应用后生效</div>
       <div class="timer-btns">
         <button id="btnTimer" class="primary">开始</button>
         <button id="btnTimerReset">重置</button>
@@ -635,6 +649,7 @@ canvas{width:100%;display:block}
 (function(){
 "use strict";
 var LS_KEY='garden.state.v1';
+var PICK={h:0,m:25,s:0,sel:'m'};
 var $=function(id){return document.getElementById(id);};
 function defaults(){
   return {
@@ -1499,12 +1514,18 @@ function setWorkMin(m){
   DUR.work=m*60;
   if(!tRunning){tRemain=DUR.work;renderFocus();}
   try{if(S.focus.customMin!==m){S.focus.customMin=m;save();}}catch(e){}
-  document.querySelectorAll('#timerPresets .preset').forEach(function(x){
+  document.querySelectorAll('#timerPresets .preset[data-m]').forEach(function(x){
     var v=parseInt(x.getAttribute('data-m'),10);
     if(v===m){x.classList.add('active');}else{x.classList.remove('active');}
   });
+  PICK.h=Math.floor(m/60);PICK.m=m%60;PICK.s=0;renderPicker();
 }
 if(S.focus&&S.focus.customMin){setWorkMin(S.focus.customMin);}
+if(S.focus&&S.focus.customSec){
+  var _cs=S.focus.customSec;
+  PICK.h=Math.floor(_cs/3600);PICK.m=Math.floor(_cs%3600/60);PICK.s=_cs%60;
+  DUR.work=_cs;tRemain=_cs;renderFocus();renderPicker();
+}
 function renderFocus(){
   var m=Math.floor(tRemain/60),s=tRemain%60;
   $('timer').textContent=pad(m)+':'+pad(s);
@@ -1551,11 +1572,62 @@ function timerTick(){
 document.querySelectorAll('#timerPresets .preset[data-m]').forEach(function(x){
   x.addEventListener('click',function(){setWorkMin(parseInt(x.getAttribute('data-m'),10)||25);});
 });
+/* 拨轮：时/分/秒（PICK 已在顶部声明） */
+function renderPicker(){
+  var e1=$('pvH'),e2=$('pvM'),e3=$('pvS');
+  if(e1)e1.textContent=pad(PICK.h);
+  if(e2)e2.textContent=pad(PICK.m);
+  if(e3)e3.textContent=pad(PICK.s);
+  document.querySelectorAll('.pcol').forEach(function(x){
+    x.classList.toggle('sel',x.getAttribute('data-f')===PICK.sel);
+  });
+}
+function pickDelta(d){
+  if(PICK.sel==='h'){PICK.h=(PICK.h+d+24)%24;}
+  else if(PICK.sel==='m'){PICK.m=(PICK.m+d+60)%60;}
+  else{PICK.s=(PICK.s+d+60)%60;}
+  renderPicker();
+}
+document.querySelectorAll('.pcol').forEach(function(x){
+  x.addEventListener('click',function(){PICK.sel=x.getAttribute('data-f');renderPicker();});
+  x.addEventListener('wheel',function(e){
+    e.preventDefault();
+    pickDelta(e.deltaY>0?1:-1);
+  },{passive:false});
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='ArrowUp'){e.preventDefault();pickDelta(1);}
+  if(e.key==='ArrowDown'){e.preventDefault();pickDelta(-1);}
+});
 var _am=$('btnApplyMin');
 if(_am){_am.addEventListener('click',function(){
-  var v=parseInt($('customMin').value,10); if(!v||isNaN(v)){v=25;}
-  setWorkMin(v);
+  var total=PICK.h*3600+PICK.m*60+PICK.s;
+  if(total<10)total=600;
+  DUR.work=total;
+  if(!tRunning){tRemain=DUR.work;renderFocus();}
+  try{if(S.focus.customSec!==total){S.focus.customSec=total;save();}}catch(e){}
+  document.querySelectorAll('#timerPresets .preset[data-m]').forEach(function(x){x.classList.remove('active');});
+  toast('已应用 '+pad(Math.floor(total/3600))+':'+pad(Math.floor(total%3600/60))+':'+pad(total%60));
 });}
+/* 白噪音 */
+var _noise=null;
+var _noiseBtn=$('btnNoise');
+if(_noiseBtn){_noiseBtn.addEventListener('click',function(){
+  if(_noise){try{_noise.stop();}catch(e){}_noise=null;_noiseBtn.classList.remove('active');return;}
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;
+    var ctx=new AC();
+    var buf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);
+    var ch=buf.getChannelData(0);
+    for(var i=0;i<buf.length;i++){ch[i]=(Math.random()*2-1)*0.55;}
+    var src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+    var f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=700;
+    var g=ctx.createGain();g.gain.value=.1;
+    src.connect(f);f.connect(g);g.connect(ctx.destination);src.start();
+    _noise=src;_noiseBtn.classList.add('active');
+  }catch(e){toast('白噪音不可用（浏览器限制）');}
+});}
+renderPicker();
 $('btnTimer').addEventListener('click',function(){
   var fc=document.querySelector('.focus-card');
   if(fc)fc.classList.remove('flash');
