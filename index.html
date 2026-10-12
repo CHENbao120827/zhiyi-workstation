@@ -145,6 +145,13 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
   background:var(--card2);border:1px solid var(--line);color:var(--sub);transition:.16s;font-family:inherit;font-size:12px}
 .launch-btn:hover{color:var(--txt);border-color:var(--line2);transform:translateY(-2px);background:rgba(40,60,100,.55)}
 .launch-btn .ic{font-size:19px;line-height:1}
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.ov-item{background:linear-gradient(135deg,rgba(37,99,235,.10),rgba(56,189,248,.05));border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ov-item .ov-k{font-size:11px;color:var(--sub);letter-spacing:.5px}
+.ov-item .ov-v{font-size:20px;font-weight:700;color:#38bdf8;margin-top:3px}
+.ov-item .ov-v small{font-size:11px;font-weight:400;color:var(--dim)}
+.ov-item.ov-done .ov-v{color:#52c41a}
+.mini-warn{background:rgba(234,102,104,.10);border:1px solid rgba(234,102,104,.30);color:#ff8b8b;font-size:12px;padding:6px 10px;border-radius:8px;margin-bottom:8px;letter-spacing:.5px}
 .launch-hint{font-size:10.5px;color:var(--dim);margin-top:10px;letter-spacing:.5px}
 /* 日历 */
 .cal-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
@@ -296,6 +303,7 @@ select{min-width:120px}
 .ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:8}
 .ring-fg{fill:none;stroke:var(--sky);stroke-width:8;stroke-linecap:round;stroke-dasharray:628;stroke-dashoffset:628;transition:stroke-dashoffset 1s linear;filter:drop-shadow(0 0 6px rgba(77,124,255,.55))}
 .timer-wrap .timer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:52px;letter-spacing:4px;font-weight:200;font-variant-numeric:tabular-nums;color:#fff;font-family:ui-monospace,Consolas,monospace}
+.focus-streak{font-size:12px;color:var(--sky);margin:2px 0 8px;letter-spacing:.5px}
 .timer-mode{font-size:11px;color:var(--sub);margin:18px 0 36px;letter-spacing:5px;font-family:ui-monospace,Consolas,monospace}
 .timer-mode.work{color:var(--sky)}
 .timer-btns{display:flex;gap:20px;justify-content:center;margin-top:14px}
@@ -378,6 +386,10 @@ canvas{width:100%;display:block}
 
   <!-- ============ 仪表盘 ============ -->
   <section id="view-dash" class="view active">
+    <div class="card" style="margin-bottom:14px">
+      <div class="card-title">今日概览 <span class="tag">聚合</span></div>
+      <div class="overview-grid" id="overviewGrid"></div>
+    </div>
     <div class="grid dash-hero">
       <div class="card">
         <div class="card-title">System Time <span class="tag">本地时区</span></div>
@@ -539,6 +551,7 @@ canvas{width:100%;display:block}
       </div>
       <div class="timer-mode work" id="timerMode">FOCUS</div>
       <div class="focus-today" id="focusToday">今日专注 · 0 次 · 0 分钟</div>
+      <div class="focus-streak" id="focusStreak">🔥 连续专注 0 天</div>
       <div class="timer-presets" id="timerPresets">
         <button class="preset" data-m="15">15分</button>
         <button class="preset active" data-m="25">25分</button>
@@ -1411,12 +1424,28 @@ $('btnBulkDel').addEventListener('click',function(){
 });
 
 /* ---------- 仪表盘：今日待办速览 ---------- */
+function renderOverview(){
+  var el=$('overviewGrid'); if(!el)return;
+  var f=(S.focus&&S.focus.days)||{}, fs=(S.focus&&S.focus.secs)||{};
+  var fc=f[today()]||0, fm=Math.round((fs[today()]||0)/60);
+  var done=S.tasks.filter(function(t){return t.done;}).length, total=S.tasks.length;
+  var todayStr=today();
+  var hDone=S.habits.filter(function(h){var log=S.habitLog[h.id]||[];return log.indexOf(todayStr)>-1;}).length;
+  var gDone=S.goals.filter(function(g){return g.done;}).length;
+  el.innerHTML=
+    '<div class="ov-item"><div class="ov-k">今日专注</div><div class="ov-v">'+fc+'<small> 次 · '+fm+' 分</small></div></div>'
+    +'<div class="ov-item'+(total&&done===total?' ov-done':'')+'"><div class="ov-k">待办进度</div><div class="ov-v">'+done+'<small> / '+total+'</small></div></div>'
+    +'<div class="ov-item'+(S.habits.length&&hDone===S.habits.length?' ov-done':'')+'"><div class="ov-k">习惯打卡</div><div class="ov-v">'+hDone+'<small> / '+S.habits.length+' 项</small></div></div>'
+    +'<div class="ov-item"><div class="ov-k">目标达成</div><div class="ov-v">'+gDone+'<small> / '+S.goals.length+'</small></div></div>';
+}
 function renderMiniTodo(){
   var el=$('miniTodo'); if(!el)return;
+  var warn=S.tasks.filter(function(t){return !t.done&&isOd(t);}).length;
+  var warnHtml=warn?'<div class="mini-warn">⚠ '+warn+' 个待办已过期</div>':'';
   var open=S.tasks.filter(function(t){return !t.done;});
   var top=open.slice(0,5);
-  if(!top.length){ el.innerHTML='<div class="empty">今日无待办，清清爽爽</div>'; return; }
-  el.innerHTML=top.map(function(t){
+  if(!top.length){ el.innerHTML=warnHtml||'<div class="empty">今日无待办，清清爽爽</div>'; return; }
+  el.innerHTML=warnHtml+top.map(function(t){
     var od=isOd(t);
     return '<div class="mini-item'+(od?' overdue':'')+'" data-id="'+t.id+'">'
       +'<span class="t">'+esc(t.text)+'</span>'
@@ -1565,6 +1594,14 @@ if(S.focus&&S.focus.customSec){
 }
 function renderFocusToday(){
   var el=$('focusToday'); if(!el)return;
+  var stEl=$('focusStreak');
+  if(stEl){
+    var days=(S.focus&&S.focus.days)||{};
+    var d=new Date(), n=0;
+    if(!days[fmt(d)])d.setDate(d.getDate()-1);
+    while(days[fmt(d)]){n++;d.setDate(d.getDate()-1);}
+    stEl.innerHTML='🔥 连续专注 <b style="color:#38bdf8">'+n+' 天</b>';
+  }
   var c=(S.focus.days&&S.focus.days[today()])||0;
   var m=Math.round(((S.focus.secs&&S.focus.secs[today()])||0)/60);
   el.innerHTML='今日专注 · <b>'+c+' 次</b> · <b>'+m+' 分钟</b>';
@@ -2050,7 +2087,7 @@ function shutdownSrv(){
 /* ---------- 启动 ---------- */
 function renderAll(){
   renderWeather(); renderNews(); renderLinks(); renderCal();
-  renderDaily();
+  renderDaily(); renderOverview();
   renderMiniTodo(); renderTasks(); renderHabits(); renderGoals(); renderNotes(); renderFocus();
   if(cur==='data')renderData();
 }
