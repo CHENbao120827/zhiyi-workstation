@@ -339,7 +339,9 @@ select{min-width:120px}
 .preset{padding:8px 18px;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:8px;cursor:pointer;font-size:12px;transition:.15s}
 .preset:hover{border-color:var(--sky);color:var(--sky)}
 .preset.active{background:rgba(77,124,255,.15);border-color:var(--sky);color:var(--sky)}
-#btnNoise.active{background:rgba(34,197,94,.15);border-color:#34d399;color:#34d399}
+.noise-row{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.noise.active{background:rgba(34,197,94,.15);border-color:#34d399;color:#34d399}
+.noise.active::after{content:' •';color:#34d399}
 .focus-log{margin-top:16px;padding-top:12px;border-top:1px solid rgba(56,189,248,.12);max-width:340px;margin-left:auto;margin-right:auto;text-align:left}
 .focus-log .lg-h{font-size:10px;color:var(--dim);letter-spacing:4px;text-align:center;margin-bottom:8px}
 .focus-log .lg-row{display:flex;justify-content:space-between;font-size:11px;color:var(--txt);padding:3px 2px;opacity:.85}
@@ -600,7 +602,12 @@ canvas{width:100%;display:block}
         <button class="preset active" data-m="25">25分</button>
         <button class="preset" data-m="45">45分</button>
         <button class="preset" data-m="60">60分</button>
-        <button id="btnNoise" class="preset">白噪音</button>
+        <span class="noise-row">
+          <button class="preset noise active" data-n="white">白噪音</button>
+          <button class="preset noise" data-n="rain">雨声</button>
+          <button class="preset noise" data-n="ocean">海浪</button>
+          <button class="preset noise" data-n="cafe">咖啡馆</button>
+        </span>
       </div>
       <div class="break-presets" id="breakPresets">
         <span class="bplab">休息</span>
@@ -1847,24 +1854,44 @@ if(_am){_am.addEventListener('click',function(){
   document.querySelectorAll('#timerPresets .preset[data-m]').forEach(function(x){x.classList.remove('active');});
   toast('已应用 '+pad(Math.floor(total/3600))+':'+pad(Math.floor(total%3600/60))+':'+pad(total%60));
 });}
-/* 白噪音 */
-var _noise=null;
-var _noiseBtn=$('btnNoise');
-if(_noiseBtn){_noiseBtn.addEventListener('click',function(){
-  if(_noise){try{_noise.stop();}catch(e){}_noise=null;_noiseBtn.classList.remove('active');return;}
+/* 白噪音 · 四种音效 */
+var _noise=null,_noiseType=null;
+function noiseStop(){
+  if(_noise){try{_noise.src.stop();_noise.ctx.close();}catch(e){}_noise=null;_noiseType=null;}
+  document.querySelectorAll('.noise').forEach(function(b){b.classList.remove('active');});
+}
+function noiseStart(type,btn){
   try{
     var AC=window.AudioContext||window.webkitAudioContext;
     var ctx=new AC();
-    var buf=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate);
-    var ch=buf.getChannelData(0);
-    for(var i=0;i<buf.length;i++){ch[i]=(Math.random()*2-1)*0.55;}
+    var len=ctx.sampleRate*4;
+    var buf=ctx.createBuffer(1,len,ctx.sampleRate);
+    var d=buf.getChannelData(0);
+    var last=0;
+    for(var i=0;i<len;i++){
+      var w=Math.random()*2-1;
+      if(type==='ocean'){last=(last+0.02*w)/1.02;d[i]=last*3.2;}
+      else{d[i]=w;}
+    }
     var src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
-    var f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=700;
-    var g=ctx.createGain();g.gain.value=.1;
-    src.connect(f);f.connect(g);g.connect(ctx.destination);src.start();
-    _noise=src;_noiseBtn.classList.add('active');
-  }catch(e){toast('白噪音不可用（浏览器限制）');}
-});}
+    var g=ctx.createGain();g.gain.value=type==='cafe'?0.16:0.18;
+    src.connect(g);
+    if(type==='rain'){var f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=1600;g.connect(f);f.connect(ctx.destination);}
+    else if(type==='ocean'){var f2=ctx.createBiquadFilter();f2.type='lowpass';f2.frequency.value=520;g.connect(f2);f2.connect(ctx.destination);}
+    else if(type==='cafe'){var f3=ctx.createBiquadFilter();f3.type='bandpass';f3.frequency.value=900;f3.Q.value=.5;g.connect(f3);f3.connect(ctx.destination);}
+    else{g.connect(ctx.destination);}
+    src.start();
+    _noise={src:src,ctx:ctx};_noiseType=type;
+    document.querySelectorAll('.noise').forEach(function(b){b.classList.toggle('active',b===btn);});
+  }catch(e){toast('音效不可用（浏览器限制）');}
+}
+document.querySelectorAll('.noise').forEach(function(b){
+  b.addEventListener('click',function(){
+    var type=b.getAttribute('data-n');
+    if(_noise&&_noiseType===type){noiseStop();return;}
+    noiseStop();noiseStart(type,b);
+  });
+});
 renderPicker();
 $('btnTimer').addEventListener('click',function(){
   var fc=document.querySelector('.focus-card');
