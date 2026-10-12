@@ -208,6 +208,12 @@ def load_state():
 
 def save_state(ts, data):
     with _lock:
+        try:
+            if os.path.exists(STATE_FILE):
+                import shutil as _sh
+                _sh.copy2(STATE_FILE, STATE_FILE + '.bak')
+        except Exception:
+            pass
         with open(STATE_FILE, 'w', encoding='utf-8') as f:
             json.dump({'ts': ts, 'data': data}, f, ensure_ascii=False)
     return ts

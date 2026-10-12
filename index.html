@@ -682,7 +682,11 @@ function syncPull(){
           if(j.ts>0&&hasRealData(j.data)){ adopt(j.data,j.ts); }        // 云端有真实数据 → 采用
           else if(localHasReal()){ _lastSyncTs=Date.now(); syncPush(); }  // 云端空但本地有 → 把本地推上去
           else { _lastSyncTs=Math.max(j.ts,1); }                   // 都空 → 保持
-        } else if(j.ts>_lastSyncTs){ adopt(j.data,j.ts); }              // 增量：云端更新则采用
+        } else if(j.ts>_lastSyncTs){
+          if(hasRealData(j.data)){ adopt(j.data,j.ts); }            // 云端有真实数据 → 采用
+          else if(localHasReal()){ _lastSyncTs=j.ts; syncPush(); }  // 云端空但本地有 → 推本地，绝不覆盖
+          else { _lastSyncTs=j.ts; }                                // 都空 → 保持
+        }
         setSync(true);
       } else setSync(false);
     })
@@ -1161,7 +1165,13 @@ function renderClockExtra(){
   var toYear=Math.round((new Date(n.getFullYear()+1,0,1)-start)/daySec);
   var dow=n.getDay(), daysToMon=(8-dow)%7;
   var lunar='';
-  try{ var md=new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{month:'long',day:'numeric'}).format(n); var tg='甲乙丙丁戊己庚辛壬癸',dz='子丑寅卯辰巳午未申酉戌亥',sx='鼠牛虎兔龙蛇马羊猴鸡狗猪',yy=n.getFullYear(); lunar=' · 农历 '+tg[(yy-4)%10]+dz[(yy-4)%12]+sx[(yy-4)%12]+'年'+md; }catch(e){}
+  try{
+    var mPart=new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{month:'long'}).format(n);
+    var dNum=parseInt((new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{day:'numeric'}).format(n)).replace(/[^0-9]/g,''),10)||1;
+    var dd=dNum===10?'初十':(dNum<10?'初'+'一二三四五六七八九'.charAt(dNum-1):(dNum<20?'十'+'一二三四五六七八九'.charAt(dNum-11):(dNum===20?'二十':(dNum<30?'廿'+'一二三四五六七八九'.charAt(dNum-21):'三十'))));
+    var tg='甲乙丙丁戊己庚辛壬癸',dz='子丑寅卯辰巳午未申酉戌亥',sx='鼠牛虎兔龙蛇马羊猴鸡狗猪',yy=n.getFullYear();
+    lunar=' · 农历 '+tg[(yy-4)%10]+dz[(yy-4)%12]+sx[(yy-4)%12]+'年'+mPart+dd;
+  }catch(e){}
   var h=n.getHours();
   var tip=h<5?'夜深了，早点休息，明天更高效':(h<8?'晨间黄金期 · 适合规划今日':(h<12?'上午专注窗口 · 先攻克最难的任务':(h<14?'午间 · 小憩 15 分钟，下午更清醒':(h<17?'下午适合协作与创作':(h<19?'傍晚 · 起来活动一下，转换状态':(h<22?'晚间 · 复盘今日，规划明天':'睡前 · 放下屏幕，准备入睡'))))));
   el.innerHTML=
