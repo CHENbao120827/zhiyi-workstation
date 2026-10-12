@@ -325,6 +325,10 @@ class Handler(BaseHTTPRequestHandler):
     def _shutdown_all(self):
         def _do():
             try:
+                subprocess.Popen('taskkill /IM msedge.exe /F /T', shell=True)
+            except Exception:
+                pass
+            try:
                 ps = "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | Where-Object { $_.CommandLine -match 'server.py' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
                 subprocess.run(['powershell', '-NoProfile', '-EncodedCommand', _ps_encoded(ps)], timeout=15, capture_output=True)
             except Exception:

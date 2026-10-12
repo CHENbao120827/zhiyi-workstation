@@ -293,6 +293,12 @@ select{min-width:120px}
 .timer-mode.work{color:var(--sky)}
 .timer-btns{display:flex;gap:12px;justify-content:center}
 .timer-btns button{padding:10px 30px;font-size:14px;border-radius:10px}
+.timer-presets{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.preset{padding:6px 14px;border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:8px;cursor:pointer;font-size:12px;transition:.15s}
+.preset:hover{border-color:var(--sky);color:var(--sky)}
+.preset.active{background:rgba(77,124,255,.15);border-color:var(--sky);color:var(--sky)}
+#customMin{width:86px;padding:6px 8px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;font-size:12px;outline:none}
+#customMin:focus{border-color:rgba(120,150,255,.5)}
 .focus-stats{margin-top:24px;font-size:12px;color:var(--sub)}
 .focus-stats b{color:var(--sky);font-size:14px;font-family:ui-monospace,Consolas,monospace}
 .stats-row{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px}
@@ -335,11 +341,11 @@ canvas{width:100%;display:block}
     <div class="brand"><span class="dot"></span>智己工作站<span class="sub-brand">COMMAND CENTER</span></div>
     <nav class="mainnav">
       <button class="navb active" data-view="dash">仪表盘</button>
+      <button class="navb" data-view="focus">专注</button>
       <button class="navb" data-view="todo">待办</button>
       <button class="navb" data-view="habits">习惯</button>
       <button class="navb" data-view="goals">目标</button>
       <button class="navb" data-view="notes">灵感</button>
-      <button class="navb" data-view="focus">专注</button>
       <button class="navb" data-view="data">数据</button>
       <button class="navb" data-view="launchpad">马上起飞</button>
       <button class="navb" data-view="settings">设置</button>
@@ -503,6 +509,14 @@ canvas{width:100%;display:block}
     <div class="card focus-card">
       <div class="timer" id="timer">25:00</div>
       <div class="timer-mode work" id="timerMode">FOCUS</div>
+      <div class="timer-presets" id="timerPresets">
+        <button class="preset" data-m="15">15分</button>
+        <button class="preset active" data-m="25">25分</button>
+        <button class="preset" data-m="45">45分</button>
+        <button class="preset" data-m="60">60分</button>
+        <input id="customMin" type="number" min="1" max="180" placeholder="自定义(分)">
+        <button id="btnApplyMin" class="preset">应用</button>
+      </div>
       <div class="timer-btns">
         <button id="btnTimer" class="primary">开始</button>
         <button id="btnTimerReset">重置</button>
@@ -1026,11 +1040,13 @@ function shortDate(s){
 function fetchNews(cat,force){
   if(!force){
     var c=cacheGet('news2');
-    if(c&&c[cat]&&Date.now()-c[cat].t<30*60*1000){ NEWS[cat]=c[cat]; renderNews(); return; }
+    if(c&&c[cat]&&Date.now()-c[cat].t<5*60*1000){ NEWS[cat]=c[cat]; renderNews(); return; }
   }
   var mark=function(xml){
     var items=parseRSS(xml);
-    NEWS[cat]={t:Date.now(),items:(items.length?items:(NEWS_CUR[cat]||[])),live:!!items.length};
+    var cur=NEWS_CUR[cat]||[];
+    var mix=items.length?cur.slice(0,2).concat(items.slice(0,5)):cur;
+    NEWS[cat]={t:Date.now(),items:mix,live:!!items.length};
     var c2=cacheGet('news2')||{}; c2[cat]=NEWS[cat]; cacheSet('news2',c2);
     renderNews();
   };
@@ -1188,7 +1204,7 @@ function renderClockExtra(){
   var yearStart=new Date(n.getFullYear(),0,1);
   var week=Math.floor((start-yearStart)/604800000)+1;
   var toYear=Math.round((new Date(n.getFullYear()+1,0,1)-start)/daySec);
-  var dow=n.getDay(), daysToMon=(8-dow)%7;
+  var dow=n.getDay(), daysToMon=((8-dow)%7)||7;
   var lunar='';
   try{
     var mPart=new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{month:'long'}).format(n);
@@ -1485,6 +1501,17 @@ $('noteList').addEventListener('click',function(e){
 /* ---------- 专注 ---------- */
 var DUR={work:25*60,brk:5*60};
 var tRemain=DUR.work,tMode='work',tRunning=false,tInt=null;
+function setWorkMin(m){
+  m=Math.max(1,Math.min(180,Math.round(Number(m))||25));
+  DUR.work=m*60;
+  if(!tRunning){tRemain=DUR.work;renderFocus();}
+  try{if(S.focus.customMin!==m){S.focus.customMin=m;save();}}catch(e){}
+  document.querySelectorAll('#timerPresets .preset').forEach(function(x){
+    var v=parseInt(x.getAttribute('data-m'),10);
+    if(v===m){x.classList.add('active');}else{x.classList.remove('active');}
+  });
+}
+if(S.focus&&S.focus.customMin){setWorkMin(S.focus.customMin);}
 function renderFocus(){
   var m=Math.floor(tRemain/60),s=tRemain%60;
   $('timer').textContent=pad(m)+':'+pad(s);
@@ -1524,6 +1551,14 @@ function timerTick(){
   }
   renderFocus();
 }
+document.querySelectorAll('#timerPresets .preset[data-m]').forEach(function(x){
+  x.addEventListener('click',function(){setWorkMin(parseInt(x.getAttribute('data-m'),10)||25);});
+});
+var _am=$('btnApplyMin');
+if(_am){_am.addEventListener('click',function(){
+  var v=parseInt($('customMin').value,10); if(!v||isNaN(v)){v=25;}
+  setWorkMin(v);
+});}
 $('btnTimer').addEventListener('click',function(){
   if(tRunning){ clearInterval(tInt); tRunning=false; }
   else{ tRunning=true; clearInterval(tInt); tInt=setInterval(timerTick,1000); }
@@ -1714,13 +1749,13 @@ function renderDaily(){
   if(w){ var a=WEAPONS[dailyPick(WEAPONS,'weapon.day')];
     w.innerHTML='<div class="wx-temp" style="font-size:12.5px;margin:4px 0">'+esc(a.n)+'</div>'+
       '<div class="wx-meta">'+esc(a.c)+' · '+esc(a.k)+'</div>'+
-      '<div class="wx-cond" style="margin-top:8px;font-size:12.5px;line-height:1.9">'+esc(a.d)+'</div>'+
+      '<div class="wx-cond" style="margin-top:8px;font-size:14px;line-height:1.8">'+esc(a.d)+'</div>'+
       '<div class="wx-upd">今日军械 · '+esc(a.t)+'</div>'; }
   var b=$('techBox');
   if(b){ var a2=TECHS[dailyPick(TECHS,'tech.day')];
     b.innerHTML='<div class="wx-temp" style="font-size:12.5px;margin:4px 0">'+esc(a2.n)+'</div>'+
       '<div class="wx-meta">'+esc(a2.c)+'</div>'+
-      '<div class="wx-cond" style="margin-top:8px;font-size:12.5px;line-height:1.9">'+esc(a2.d)+'</div>'+
+      '<div class="wx-cond" style="margin-top:8px;font-size:14px;line-height:1.8">'+esc(a2.d)+'</div>'+
       '<div class="wx-upd">今日科技 · '+esc(a2.t)+'</div>'; }
 }
 /* ---------- 服务控制 ---------- */
