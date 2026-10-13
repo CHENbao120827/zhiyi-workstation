@@ -404,6 +404,24 @@ canvas{width:100%;display:block}
 .btn-set:hover{filter:brightness(1.15)}
 .btn-danger{background:rgba(234,102,104,.2);color:#ff9a9a;border:1px solid rgba(234,102,104,.45)}
 .btn-danger:hover{background:rgba(234,102,104,.32);color:#fff}
+
+/* ---------- 命令面板 Ctrl+K ---------- */
+#cmdMask{position:fixed;inset:0;background:rgba(4,10,24,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:900;display:none;align-items:flex-start;justify-content:center;padding-top:14vh}
+#cmdPanel{width:min(620px,92vw);background:linear-gradient(160deg,rgba(15,26,48,.97),rgba(8,14,30,.98));border:1px solid rgba(77,124,255,.35);border-radius:16px;box-shadow:0 0 0 1px rgba(56,189,248,.12),0 24px 70px rgba(0,0,0,.6),0 0 46px rgba(56,189,248,.18);overflow:hidden}
+#cmdInput{width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:none;border-bottom:1px solid rgba(77,124,255,.3);color:#eef3ff;font-size:15px;padding:16px 18px;outline:none;font-family:inherit;letter-spacing:.5px}
+#cmdInput::placeholder{color:rgba(190,205,235,.45)}
+#cmdList{max-height:380px;overflow-y:auto;padding:8px;box-sizing:border-box}
+.cmd-group{font-size:10.5px;letter-spacing:2.5px;color:rgba(125,150,210,.75);padding:10px 10px 4px}
+.cmd-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13.5px;color:var(--txt);transition:.12s}
+.cmd-item.sel{background:linear-gradient(90deg,rgba(77,124,255,.28),rgba(56,189,248,.16));box-shadow:inset 0 0 0 1px rgba(77,124,255,.4)}
+.cmd-item .ci-ic{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:rgba(77,124,255,.14);font-size:14px;flex:none}
+.cmd-item .ci-k{margin-left:auto;font-size:10.5px;color:rgba(160,180,225,.6);letter-spacing:1px;flex:none}
+.cmd-empty{padding:22px;text-align:center;color:rgba(160,180,225,.55);font-size:13px}
+#cmdHint{display:flex;gap:16px;padding:9px 16px;border-top:1px solid rgba(77,124,255,.18);font-size:10.5px;color:rgba(150,170,220,.6);letter-spacing:1px}
+
+#cmdFab{position:fixed;right:22px;bottom:22px;width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,rgba(77,124,255,.9),rgba(56,189,248,.75));border:none;color:#fff;font-size:20px;cursor:pointer;z-index:800;box-shadow:0 8px 26px rgba(0,0,0,.5),0 0 22px rgba(56,189,248,.35);transition:.18s;display:flex;align-items:center;justify-content:center;font-family:inherit}
+#cmdFab:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.55),0 0 30px rgba(56,189,248,.5)}
+#cmdFab:active{transform:translateY(0)}
 </style>
 </head>
 <body>
@@ -767,6 +785,14 @@ canvas{width:100%;display:block}
   <span style="margin-left:auto;font-size:11px;color:var(--dim);letter-spacing:1px">智己工作站 · 完全版</span>
 </div>
 <div id="toast"></div>
+<button id="cmdFab" title="命令面板 (Ctrl+Shift+K)">⌘</button>
+<div id="cmdMask">
+  <div id="cmdPanel">
+    <input id="cmdInput" placeholder="输入关键词快速切换页面 / 启动应用 / 控制专注 / 切换新闻…">
+    <div id="cmdList"></div>
+    <div id="cmdHint"><span>↑↓ 选择</span><span>↵ 执行</span><span>Esc 关闭</span><span>Ctrl+Shift+K / 右下角 ⌘ 呼出</span></div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -774,6 +800,94 @@ canvas{width:100%;display:block}
 var LS_KEY='garden.state.v1';
 var PICK={h:0,m:25,s:0,sel:'m'};
 var $=function(id){return document.getElementById(id);};
+/* ---------- 命令面板（Ctrl+K） ---------- */
+var cmdOpen=false, cmdSel=0, cmdItems=[];
+try{
+function cmdBuild(q){
+  q=(q||'').toLowerCase();
+  var pages=[['dash','📊','今日'],['todo','✅','待办'],['habits','🌱','习惯'],['goals','🎯','目标'],['notes','💡','灵感'],['focus','⏱️','专注'],['data','📈','数据'],['launchpad','🚀','马上起飞'],['settings','ℹ️','说明']];
+  var groups=[];
+  var pg=pages.map(function(p){
+    return {ic:p[1],t:p[2],k:p[0],f:function(){var b=document.querySelector('.navb[data-view="'+p[0]+'"]');if(b)b.click();}};
+  });
+  groups.push({g:'页面',a:pg});
+  var lps=LAUNCH.map(function(a){
+    return {ic:a.ic,t:'启动 '+a.name,k:a.key,f:function(){fetch('/api/open?app='+a.key,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'}).then(function(r){return r.json();}).then(function(j){toast(j.ok?j.msg:('启动失败：'+j.msg));}).catch(function(){toast('后端未连接');});}};
+  });
+  [{k:'mars',n:'火星之心',ic:'🚀'},{k:'space',n:'航天模拟器',ic:'🛸'}].forEach(function(a){
+    lps.push({ic:a.ic,t:'点火 '+a.n,k:a.k,f:function(){fetch('/api/open?app='+a.k,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'}).then(function(r){return r.json();}).then(function(j){toast(j.ok?j.msg:('启动失败：'+j.msg));}).catch(function(){toast('后端未连接');});}});
+  });
+  groups.push({g:'启动',a:lps});
+  var fcs=[];
+  fcs.push({ic:'▶️',t:'专注：开始 / 暂停',k:'toggle',f:function(){var b=$('btnTimer');if(b)b.click();}});
+  fcs.push({ic:'🔄',t:'专注：重置',k:'reset',f:function(){var b=$('btnTimerReset');if(b)b.click();}});
+  groups.push({g:'专注',a:fcs});
+  var nws=NTABS.map(function(x){
+    return {ic:'📰',t:'新闻：'+x[1],k:x[0],f:function(){var b=document.querySelector('.ntab[data-c="'+x[0]+'"]');if(b)b.click();}};
+  });
+  groups.push({g:'新闻',a:nws});
+  var all=[];
+  groups.forEach(function(gr){
+    var sub=gr.a.filter(function(it){return !q||it.t.toLowerCase().indexOf(q)>-1||it.k.indexOf(q)>-1;});
+    sub.forEach(function(it){all.push({g:gr.g,it:it});});
+  });
+  all.__all=all;
+  return all;
+}
+function cmdRender(){
+  var el=$('cmdList'); if(!el)return;
+  var all=cmdItems.__all||[];
+  if(!all.length){ el.innerHTML='<div class="cmd-empty">没有匹配的命令</div>'; return; }
+  var html='', lastG=null;
+  all.forEach(function(r,idx){
+    if(r.g!==lastG){ html+='<div class="cmd-group">'+r.g+'</div>'; lastG=r.g; }
+    html+='<div class="cmd-item'+(idx===cmdSel?' sel':'')+'" data-i="'+idx+'"><span class="ci-ic">'+r.it.ic+'</span>'+r.it.t+'<span class="ci-k">'+r.it.k+'</span></div>';
+  });
+  el.innerHTML=html;
+  var sel=el.querySelector('.cmd-item.sel');
+  if(sel)sel.scrollIntoView({block:'nearest'});
+}
+function cmdOpenPanel(){
+  cmdOpen=true; cmdSel=0;
+  var m=$('cmdMask'); if(!m)return;
+  m.style.display='flex';
+  $('cmdInput').value='';
+  cmdItems=cmdBuild('');
+  cmdRender();
+  setTimeout(function(){$('cmdInput').focus();},30);
+}
+function cmdClose(){ cmdOpen=false; var m=$('cmdMask'); if(m)m.style.display='none'; }
+document.addEventListener('keydown',function(e){
+  if(e.ctrlKey||e.metaKey){
+    var kk=(e.key||'').toLowerCase();
+    if(kk==='k'){ e.preventDefault(); if(cmdOpen)cmdClose(); else cmdOpenPanel(); return; }
+  }
+  if(e.ctrlKey&&e.shiftKey&&(e.key||'').toLowerCase()==='k'){ e.preventDefault(); if(cmdOpen)cmdClose(); else cmdOpenPanel(); return; }
+  if(!cmdOpen)return;
+  var all=cmdItems.__all||[];
+  if(e.key==='Escape'){ e.preventDefault(); cmdClose(); return; }
+  if(e.key==='ArrowDown'){ e.preventDefault(); cmdSel=Math.min(cmdSel+1,all.length-1); cmdRender(); return; }
+  if(e.key==='ArrowUp'){ e.preventDefault(); cmdSel=Math.max(cmdSel-1,0); cmdRender(); return; }
+  if(e.key==='Enter'){ e.preventDefault(); var r=all[cmdSel]; if(r){ cmdClose(); setTimeout(function(){r.it.f();},20);} return; }
+});
+$('cmdMask').addEventListener('click',function(e){ if(e.target.id==='cmdMask')cmdClose(); });
+$('cmdFab').addEventListener('click',function(){ if(cmdOpen)cmdClose(); else cmdOpenPanel(); });
+$('cmdList').addEventListener('mousemove',function(e){
+  var it=e.target.closest('.cmd-item'); if(!it)return;
+  var i=parseInt(it.getAttribute('data-i'),10);
+  if(i!==cmdSel){ cmdSel=i; cmdRender(); }
+});
+$('cmdList').addEventListener('click',function(e){
+  var it=e.target.closest('.cmd-item'); if(!it)return;
+  var i=parseInt(it.getAttribute('data-i'),10);
+  var r=(cmdItems.__all||[])[i];
+  if(r){ cmdClose(); setTimeout(function(){r.it.f();},20); }
+});
+$('cmdInput').addEventListener('input',function(){ cmdSel=0; cmdItems=cmdBuild(this.value); cmdRender(); });
+window.cmdOpenPanel=cmdOpenPanel; window.cmdClose=cmdClose; window.cmdOpen=cmdOpenPanel;
+}catch(e){ window.__cmdErr=String(e&&e.stack||e); }
+
+
 function defaults(){
   return {
     name:'',tasks:[],habits:[],habitLog:{},goals:[],notes:[],focus:{days:{}},
@@ -2397,6 +2511,8 @@ pollSys();
     if(n)n.click();
   }
 })();
+
+
 })();
 </script>
 </body>
