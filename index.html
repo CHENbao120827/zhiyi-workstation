@@ -292,6 +292,9 @@ select{min-width:120px}
 .hc-e.empty{visibility:hidden}
 .hc-l{grid-column:1/-1;display:flex;justify-content:space-between;font-size:11px;color:var(--sub);letter-spacing:1px;padding:2px 2px 0}
 .habit-streak{font-size:11px;color:var(--sky);background:rgba(56,189,248,.08);padding:2px 10px;border-radius:20px;border:1px solid var(--line)}
+.habit-week{font-size:11px;color:#7dd3fc;letter-spacing:.5px;white-space:nowrap}
+.habit-wkbar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:-4px 0 10px;overflow:hidden}
+.habit-wkbar i{display:block;height:100%;border-radius:2px;background:linear-gradient(90deg,#38bdf8,#4d7cff);transition:width .4s}
 .habit-grid{display:grid;grid-template-columns:repeat(7,minmax(26px,1fr));gap:5px;max-width:560px}
 .hcell{aspect-ratio:1;border-radius:6px;background:rgba(22,34,60,.4);cursor:pointer;transition:.12s;border:1px solid transparent}
 .hcell:hover{border-color:rgba(120,150,255,.4)}
@@ -1045,12 +1048,30 @@ function checkDueReminder(){
   if(!S.tasks)return;
   var soon=S.tasks.filter(function(t){return !t.done&&t.due&&t.due<=today();});
   var fresh=soon.filter(function(t){return !_dueNotified[t.id];});
-  if(!fresh.length)return;
-  var od=fresh.filter(function(t){return t.due<today();}).length;
-  var tdy=fresh.filter(function(t){return t.due===today();}).length;
-  if(tdy)showRemind('⏰ 今日截止',tdy+' 个任务今天到期，点击查看',false);
-  if(od)showRemind('⚠ 任务过期',od+' 个任务已过期'+soon[0].due+' 起，点击处理',true);
-  fresh.forEach(function(t){_dueNotified[t.id]=1;});
+  if(fresh.length){
+    var od=fresh.filter(function(t){return t.due<today();}).length;
+    var tdy=fresh.filter(function(t){return t.due===today();}).length;
+    if(tdy)showRemind('⏰ 今日截止',tdy+' 个任务今天到期，点击查看',false);
+    if(od)showRemind('⚠ 任务过期',od+' 个任务已过期'+soon[0].due+' 起，点击处理',true);
+    fresh.forEach(function(t){_dueNotified[t.id]=1;});
+  }
+  if(S.goals){
+    var near=S.goals.filter(function(g){
+      if(g.done)return false;
+      var d=daysLeft(g.target); return d!==null&&d<=3;
+    });
+    var gn=near.filter(function(g){return !_dueNotified['g:'+g.id];});
+    if(gn.length){
+      var od2=gn.filter(function(g){return daysLeft(g.target)<0;}).length;
+      var sd=gn.filter(function(g){var d=daysLeft(g.target);return d>=0&&d<=3;});
+      if(sd.length){
+        var s=sd.sort(function(a,b){return daysLeft(a.target)-daysLeft(b.target);})[0];
+        showRemind('🎯 目标临近','「'+s.title+'」还剩 '+daysLeft(s.target)+' 天，点击查看',false);
+      }
+      if(od2)showRemind('⚠ 目标逾期',od2+' 个目标已过截止日，点击处理',true);
+      gn.forEach(function(g){_dueNotified['g:'+g.id]=1;});
+    }
+  }
 }
 setInterval(checkDueReminder,60*1000);
 function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show');},2400); }
@@ -1877,11 +1898,26 @@ function renderHabits(){
     html+='<div class="habit-block"><div class="habit-head">'
       +'<span class="habit-name">'+esc(h.name)+'</span>'
       +'<span class="habit-streak">连续 '+streakOf(h.id)+' 天</span>'
+      +'<span class="habit-week" data-id="'+h.id+'"></span>'
       +'<span class="del" data-act="del" data-id="'+h.id+'">✕</span></div>'
+      +'<div class="habit-wkbar" data-id="'+h.id+'"></div>'
       +'<div class="week-labels"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>'
       +'<div class="habit-grid">'+cells+'</div></div>';
   });
   el.innerHTML=html;
+  var ws=weekStart();
+  var wd=new Date(); wd.setHours(0,0,0,0);
+  var wp=Math.max(1,Math.round((wd-ws)/86400000)+1);
+  S.habits.forEach(function(h){
+    var log=S.habitLog[h.id]||[];
+    var wkC=0;
+    for(var i=0;i<wp;i++){ var d2=new Date(ws); d2.setDate(ws.getDate()+i); if(log.indexOf(fmt(d2))>-1)wkC++; }
+    var pct=Math.min(100,Math.round(wkC/wp*100));
+    var el2=document.querySelector('.habit-week[data-id="'+h.id+'"]');
+    if(el2)el2.innerHTML='本周 '+wkC+'/'+wp+'';
+    var el3=document.querySelector('.habit-wkbar[data-id="'+h.id+'"]');
+    if(el3)el3.innerHTML='<i style="width:'+pct+'%"></i>';
+  });
 }
 function addHabit(){
   var v=$('habitInput').value.trim(); if(!v)return;
