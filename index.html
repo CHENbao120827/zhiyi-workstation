@@ -301,6 +301,11 @@ select{min-width:120px}
 .goal-done{font-size:11px;color:#6ee7b7;background:rgba(52,211,153,.10);padding:2px 10px;border-radius:20px}
 .goal-btn{cursor:pointer;font-size:12px;padding:5px 12px;border-radius:8px;color:var(--sub)}
 .goal-btn:hover{color:var(--ok)}
+.tag-row{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
+.tag-chip{background:rgba(77,124,255,.06);border:1px solid rgba(77,124,255,.28);color:#8fb3ff;font-size:12px;padding:4px 12px;border-radius:20px;cursor:pointer;transition:.2s;font-family:inherit}
+.tag-chip:hover{border-color:rgba(77,124,255,.6);color:#c7dcff}
+.tag-chip.on{background:rgba(56,189,248,.16);border-color:#38bdf8;color:#7dd3fc;box-shadow:0 0 12px rgba(56,189,248,.25)}
+.note-tag{font-size:11px;color:#7dd3fc;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);border-radius:10px;padding:1px 8px;margin-right:8px;flex:none;margin-top:3px}
 .note-item{display:flex;gap:12px;padding:10px 4px;border-bottom:1px dashed rgba(77,124,255,.08);align-items:flex-start}
 .note-item:last-child{border-bottom:none}
 .note-text{flex:1;font-size:13px;line-height:1.75;word-break:break-all;white-space:pre-wrap}
@@ -576,6 +581,11 @@ canvas{width:100%;display:block}
     <h2>灵感速记</h2>
     <div class="card">
       <textarea id="noteInput" rows="3" placeholder="一闪而过的念头，先记下来…"></textarea>
+      <div class="tag-row" id="noteTagRow">
+        <button class="tag-chip" data-tag="idea">💡 灵感</button>
+        <button class="tag-chip" data-tag="task">✅ 任务</button>
+        <button class="tag-chip" data-tag="fav">🔖 收藏</button>
+      </div>
       <div class="add-row"><button id="btnAddNote" class="primary">保存灵感</button></div>
       <div id="noteList"></div>
     </div>
@@ -1634,30 +1644,54 @@ $('goalList').addEventListener('click',function(e){
 });
 
 /* ---------- 灵感 ---------- */
+var NTF={all:'全部',idea:'💡 灵感',task:'✅ 任务',fav:'🔖 收藏'};
 function renderNotes(){
   var el=$('noteList');
-  if(!S.notes.length){ el.innerHTML='<div class="empty">灵感稍纵即逝，想到就记下来</div>'; return; }
+  var flt=(S&&S.noteFilter)||'all';
+  var chips=['all','idea','task','fav'].map(function(k){
+    return '<button class="tag-chip'+(flt===k?' on':'')+'" data-f="'+k+'">'+NTF[k]+'</button>';
+  }).join('');
+  if(!S.notes.length){ el.innerHTML='<div class="tag-row">'+chips+'</div><div class="empty">灵感稍纵即逝，想到就记下来</div>'; return; }
   var sorted=S.notes.slice().sort(function(a,b){return (b.pin?1:0)-(a.pin?1:0)||b.ts-a.ts;});
-  el.innerHTML=sorted.map(function(n){
+  var shown=sorted.filter(function(n){return flt==='all'||(n.tag||'idea')===flt;});
+  if(!shown.length){ el.innerHTML='<div class="tag-row">'+chips+'</div><div class="empty">这个分类还没有内容</div>'; return; }
+  el.innerHTML='<div class="tag-row">'+chips+'</div>'+shown.map(function(n){
     var d=new Date(n.ts);
-    return '<div class="note-item'+(n.pin?' pinned':'')+'"><span class="note-text">'+esc(n.text)+'</span>'
+    var tg=NTF[n.tag||'idea']||NTF.idea;
+    return '<div class="note-item'+(n.pin?' pinned':'')+'"><span class="note-tag">'+tg+'</span><span class="note-text">'+esc(n.text)+'</span>'
       +'<span class="note-time">'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+'</span>'
       +'<span class="pin" data-id="'+n.id+'" title="置顶/取消">'+(n.pin?'📌':'📍')+'</span>'
       +'<span class="del" data-id="'+n.id+'">✕</span></div>';
   }).join('');
 }
+function setNoteFilter(f){
+  if(S){S.noteFilter=f;save();}
+  renderNotes();
+}
 function pinNote(id){
   var n=S.notes.find(function(x){return x.id===id;});
   if(n){n.pin=!n.pin; save(); renderNotes();}
 }
+var NTAG=(S&&S.noteTag)||'idea';
+function setNoteTag(t){
+  NTAG=t; if(S){S.noteTag=t;save();}
+  document.querySelectorAll('#noteTagRow .tag-chip').forEach(function(x){
+    x.classList.toggle('on',x.getAttribute('data-tag')===t);
+  });
+}
 function addNote(){
   var v=$('noteInput').value.trim(); if(!v)return;
-  S.notes.unshift({id:uid(),text:v,ts:Date.now()});
-  $('noteInput').value=''; save(); toast('灵感已收藏');
+  S.notes.unshift({id:uid(),text:v,ts:Date.now(),tag:NTAG});
+  $('noteInput').value=''; save(); toast('灵感已收藏'); renderNotes();
 }
+document.querySelectorAll('#noteTagRow .tag-chip').forEach(function(x){
+  x.addEventListener('click',function(){setNoteTag(x.getAttribute('data-tag'));});
+});
+if(S&&S.noteTag)setNoteTag(S.noteTag);
 $('btnAddNote').addEventListener('click',addNote);
 $('noteInput').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))addNote(); });
 $('noteList').addEventListener('click',function(e){
+  var f=e.target.closest('[data-f]'); if(f){ setNoteFilter(f.getAttribute('data-f')); return; }
   var p=e.target.closest('.pin'); if(p){ pinNote(p.getAttribute('data-id')); return; }
   var d=e.target.closest('.del'); if(!d)return;
   S.notes=S.notes.filter(function(n){return n.id!==d.getAttribute('data-id');}); save(); renderNotes();
