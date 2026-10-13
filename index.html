@@ -122,6 +122,12 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .wx-link{display:inline-flex;gap:5px;margin-top:8px;font-size:12px;color:var(--sky);text-decoration:none;letter-spacing:1px;transition:.15s}
 .wx-link:hover{color:#7cd9ff}
 .wx-upd{font-size:10px;color:var(--dim);margin-top:6px;font-family:ui-monospace,Consolas,monospace}
+.wx-fc{display:flex;gap:8px;margin-top:12px}
+.wx-fc-item{flex:1;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:9px 3px 7px}
+.wx-fc-item.today{border-color:rgba(56,189,248,.45);background:rgba(56,189,248,.07)}
+.wx-fc-day{font-size:11px;color:var(--sub);letter-spacing:1px}
+.wx-fc-ic{font-size:20px;margin:3px 0 2px}
+.wx-fc-tp{font-size:12px;font-weight:600;color:#e6edf7}
 /* 系统监测 */
 .sys-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 .sys-host{font-size:12px;color:var(--sub);letter-spacing:1px}
@@ -504,6 +510,7 @@ canvas{width:100%;display:block}
         <div class="wx-cond" id="wxCond">--</div>
         <div class="wx-temp" id="wxTemp"></div>
         <div class="wx-meta" id="wxMeta"></div>
+        <div class="wx-fc" id="wxFc"></div>
         <a class="wx-link" id="wxLink1" href="#" target="_blank">查看实时预报 ↗</a>
         <div class="wx-upd" id="wxUpd"></div>
       </div>
@@ -1184,6 +1191,10 @@ function refreshWeather(){
       WX.dress=dressAdvice(WX);
       WX.sun='日出 '+String(d0.sunrise[0]).slice(11,16)+' / 日落 '+String(d0.sunset[0]).slice(11,16);
       WX.next='明日（'+String(d0.time[1]).slice(5).replace('-','/')+'）'+wxCode(d0.weather_code[1])+' '+Math.round(d0.temperature_2m_min[1])+'~'+Math.round(d0.temperature_2m_max[1])+'℃';
+      WX.fc=[0,1,2].map(function(i){
+        var day=i===0?'今天':(i===1?'明天':'后天');
+        return {d:day,code:d0.weather_code[i],low:Math.round(d0.temperature_2m_min[i]),high:Math.round(d0.temperature_2m_max[i])};
+      });
       WX.upd='实时 · 更新于 '+pad(tm.getHours())+':'+pad(tm.getMinutes())+':'+pad(tm.getSeconds())+'（Open-Meteo）';
       WX.live=true;
       WX.retryN=0; clearTimeout(WX._rt);
@@ -1212,6 +1223,14 @@ function renderWeather(){
   if(st){
     st.textContent='实时';
     st.className='tag'+(WX.live?' live':' off');
+  }
+  var fcx=$('wxFc');
+  if(fcx){
+    var ic={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌧️',53:'🌧️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',71:'❄️',73:'❄️',75:'❄️',77:'❄️',80:'🌦️',81:'🌦️',82:'⛈️',85:'❄️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
+    var fc=WX.fc||[];
+    fcx.innerHTML=fc.map(function(f){
+      return '<div class="wx-fc-item'+(f.d==='今天'?' today':'')+'"><div class="wx-fc-day">'+f.d+'</div><div class="wx-fc-ic">'+(ic[f.code]||'🌡️')+'</div><div class="wx-fc-tp">'+f.low+'~'+f.high+'℃</div></div>';
+    }).join('');
   }
   $('wxUpd').textContent=WX.upd;
 }
