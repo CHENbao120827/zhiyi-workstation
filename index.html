@@ -1770,6 +1770,20 @@ function renderFocus(){
   tm.className='timer-mode'+(tMode==='work'?' work':'');
   $('btnTimer').textContent=tRunning?'暂停':'开始';
 }
+document.addEventListener('keydown',function(e){
+  if(e.code==='Space'){
+    var t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+    var b=$('btnTimer'); if(b){e.preventDefault();b.click();}
+  }
+});
+function notify(title, body){
+  try{
+    if(!('Notification' in window))return;
+    if(Notification.permission==='granted'){ new Notification(title,{body:body}); }
+    else if(Notification.permission!=='denied'){ Notification.requestPermission(); }
+  }catch(e){}
+}
 function chime(){
   try{
     var AC=window.AudioContext||window.webkitAudioContext;
@@ -1792,10 +1806,10 @@ function timerTick(){
        S.focus.log=S.focus.log||[]; S.focus.log.unshift({t:Date.now(),m:Math.round(DUR.work/60)});
        if(S.focus.log.length>30)S.focus.log.length=30;
       save();
-      chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); renderFocusToday();
+      chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); notify('智己工作站 · 专注完成','休息 '+Math.round(DUR.brk/60)+' 分钟，放松一下'); renderFocusToday();
       tMode='brk';
     }else{
-      chime(); toast('休息结束，开始新一轮专注');
+      chime(); toast('休息结束，开始新一轮专注'); notify('智己工作站 · 休息结束','开始新一轮专注吧');
       tMode='work';
     }
     tRemain=DUR[tMode];
