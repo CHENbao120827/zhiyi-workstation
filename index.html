@@ -826,6 +826,16 @@ function cmdBuild(q){
     return {ic:'📰',t:'新闻：'+x[1],k:x[0],f:function(){var b=document.querySelector('.ntab[data-c="'+x[0]+'"]');if(b)b.click();}};
   });
   groups.push({g:'新闻',a:nws});
+  if(q){
+    var hits=[];
+    try{
+      (S.tasks||[]).forEach(function(t){ if(t.text&&t.text.toLowerCase().indexOf(q)>-1) hits.push({ic:'✅',t:'待办：'+t.text.slice(0,16),k:'todo',f:function(){var b=document.querySelector('.navb[data-view="todo"]');if(b)b.click();}}); });
+      (S.notes||[]).forEach(function(n){ if(n.text&&n.text.toLowerCase().indexOf(q)>-1) hits.push({ic:'💡',t:'灵感：'+n.text.slice(0,16),k:'notes',f:function(){var b=document.querySelector('.navb[data-view="notes"]');if(b)b.click();}}); });
+      (S.habits||[]).forEach(function(h){ if(h.name&&h.name.toLowerCase().indexOf(q)>-1) hits.push({ic:'🌱',t:'习惯：'+h.name.slice(0,16),k:'habits',f:function(){var b=document.querySelector('.navb[data-view="habits"]');if(b)b.click();}}); });
+      (S.links||[]).forEach(function(l){ if(l.name&&l.name.toLowerCase().indexOf(q)>-1) hits.push({ic:'🔗',t:'打开：'+l.name,k:'link',f:function(){try{window.open(l.url,'_blank');}catch(e){}}}); });
+    }catch(e){}
+    if(hits.length) groups.push({g:'直达',a:hits.slice(0,8)});
+  }
   var all=[];
   groups.forEach(function(gr){
     var sub=gr.a.filter(function(it){return !q||it.t.toLowerCase().indexOf(q)>-1||it.k.indexOf(q)>-1;});
@@ -931,6 +941,10 @@ var syncBase='';
 function defaultSyncBase(){ var h=location.hostname||''; if(h==='localhost'||h==='127.0.0.1'||h.indexOf('192.168.')===0||h.indexOf('10.')===0||h.indexOf('172.')===0)return location.origin; return ''; }
 function useSavedSync(){ syncBase=localStorage.getItem('syncUrl')||''; }
 function detectSyncBase(cb){
+  var _h=(location.hostname||'');
+  if(_h==='localhost'||_h==='127.0.0.1'||_h.indexOf('192.168.')===0||_h.indexOf('10.')===0||_h.indexOf('172.')===0){
+    syncBase=location.origin; cb(true); return;   // 本机/局域网 = 服务器，直连本机，忽略残留隧道
+  }
   if(syncBase){ cb(true); return; }
   var probe=location.origin;
   fetch(probe+'/api/ping',{headers:{'X-Token':SYNC_TOKEN}})
@@ -1486,7 +1500,7 @@ function renderClockExtra(){
   var yearStart=new Date(n.getFullYear(),0,1);
   var week=Math.floor((start-yearStart)/604800000)+1;
   var toYear=Math.round((new Date(n.getFullYear()+1,0,1)-start)/daySec);
-  var dow=n.getDay(), daysToMon=((8-dow)%7)||7;
+  var dow=n.getDay(), daysToMon=(8-dow)%7;
   var lunar='';
   try{
     var mPart=new Intl.DateTimeFormat('zh-CN-u-ca-chinese',{month:'long'}).format(n);
@@ -1500,7 +1514,7 @@ function renderClockExtra(){
   el.innerHTML=
     '<div class="ex-row"><span>今日已过</span><div class="ex-bar"><div class="ex-fill" style="width:'+pass.toFixed(1)+'%"></div></div><span class="ex-num">'+pass.toFixed(1)+'% · 剩 '+leftH+' 小时 '+leftM+' 分</span></div>'+
     '<div class="ex-row"><span>本年第 '+week+' 周</span><span class="ex-num">距 '+(n.getFullYear()+1)+'-01-01 还有 '+toYear+' 天</span></div>'+
-    (lunar?'<div class="ex-row"><span>'+lunar.replace(' 农历 ','')+'</span><span class="ex-num">'+daysToMon+' 天后周一</span></div>':'')+
+    (lunar?'<div class="ex-row"><span>'+lunar.replace(' 农历 ','')+'</span><span class="ex-num">'+(daysToMon===0?'今天就是周一':daysToMon+' 天后周一')+'</span></div>':'')+
     '<div class="ex-tip">'+tip+'</div>';
 }
 
@@ -1881,7 +1895,7 @@ function setWorkMin(m){
 if(S.focus&&S.focus.customMin){setWorkMin(S.focus.customMin);}
 if(S.focus&&S.focus.breakMin){
   DUR.brk=S.focus.breakMin*60;
-  _bps.forEach(function(y){
+  document.querySelectorAll('#breakPresets .preset').forEach(function(y){
     if(parseInt(y.getAttribute('data-b'),10)===S.focus.breakMin){y.classList.add('active');}
     else{y.classList.remove('active');}
   });
