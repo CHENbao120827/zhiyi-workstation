@@ -330,6 +330,16 @@ select{min-width:120px}
 .note-item .pin{cursor:pointer;font-size:12px;color:var(--dim);padding:0 2px;flex:none}
 .note-item .pin:hover{color:#38bdf8}
 .focus-badge{font-size:11px;color:var(--dim);margin:2px 0 10px;letter-spacing:.3px;opacity:.9}
+.focus-week{margin:12px 0 2px}
+.fw-title{font-size:12px;color:var(--dim);margin-bottom:8px;letter-spacing:1px}
+.fw-bars{display:flex;gap:6px;height:112px;align-items:stretch}
+.fw-col{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0}
+.fw-val{font-size:10px;color:var(--dim);height:15px;line-height:15px}
+.fw-bar{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.fw-bar i{display:block;width:58%;min-height:2px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#38bdf8,#4d7cff);opacity:.8;transition:height .4s}
+.fw-col.today .fw-bar i{opacity:1;box-shadow:0 0 10px rgba(56,189,248,.65)}
+.fw-lab{font-size:10px;color:var(--dim);margin-top:5px}
+.fw-col.today .fw-lab{color:#38bdf8;font-weight:700}
 .focus-card{text-align:center;padding:44px 20px;transition:box-shadow .4s}
 .focus-card.running{box-shadow:0 0 46px rgba(77,124,255,.16),0 0 120px rgba(77,124,255,.06)}
 .focus-card.flash .timer{animation:focusFlash .6s infinite}
@@ -640,6 +650,7 @@ canvas{width:100%;display:block}
       <div class="focus-today" id="focusToday">今日专注 · 0 次 · 0 分钟</div>
       <div class="focus-streak" id="focusStreak">🔥 连续专注 0 天</div>
       <div class="week-goal" id="weekGoal"></div>
+      <div class="focus-week" id="focusWeek"></div>
       <div class="focus-badge" id="focusBadge"></div>
       <div class="timer-presets" id="timerPresets">
         <button class="preset" data-m="15">15分</button>
@@ -1437,6 +1448,7 @@ function fetchNews(cat,force){
   renderNews();
 }
 function fetchNewsAll(){ Object.keys(NEWS_KEYS).forEach(function(c){fetchNews(c,true);}); }
+setInterval(function(){ if(document.visibilityState!=='hidden')fetchNews(newsCat,true); }, 30*60*1000);
 function renderNews(){
   $('newsTabs').innerHTML=NTABS.map(function(x){
     return '<button class="ntab'+(newsCat===x[0]?' active':'')+'" data-c="'+x[0]+'"><span class="dot" style="background:'+x[2]+'"></span>'+x[1]+'</button>';
@@ -2015,9 +2027,28 @@ function renderFocusBadge(){
   if(nxt)txt+='（距 '+nxt.n+' 还差 '+Math.ceil((nxt.m-total)/60)+' 分钟）';
   el.textContent=txt;
 }
+function renderFocusWeek(){
+  var el=$('focusWeek'); if(!el)return;
+  var ws=weekStart(); var secs=(S.focus&&S.focus.secs)||{}; var td=today();
+  var days=[], tot=0;
+  for(var i=0;i<7;i++){
+    var d=new Date(ws); d.setDate(ws.getDate()+i);
+    var k=fmt(d), m=Math.round((secs[k]||0)/60); tot+=m;
+    days.push({label:'日一二三四五六'[d.getDay()],m:m,isToday:k===td});
+  }
+  var max=1; days.forEach(function(x){if(x.m>max)max=x.m;});
+  el.innerHTML='<div class="fw-title">本周专注分布 · 共 <b style="color:#38bdf8">'+tot+'</b> 分钟</div>'
+    +'<div class="fw-bars">'+days.map(function(x){
+      return '<div class="fw-col'+(x.isToday?' today':'')+'" title="'+x.label+' '+x.m+' 分钟">'
+        +'<div class="fw-val">'+(x.m||'')+'</div>'
+        +'<div class="fw-bar"><i style="height:'+Math.round(x.m/max*100)+'%"></i></div>'
+        +'<div class="fw-lab">'+x.label+'</div></div>';
+    }).join('')+'</div>';
+}
 function renderFocusToday(){
   var el=$('focusToday'); if(!el)return;
   renderWeekGoal();
+  renderFocusWeek();
   renderFocusBadge();
   var stEl=$('focusStreak');
   if(stEl){
