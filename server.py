@@ -149,6 +149,22 @@ def top_procs(n=8):
     except Exception:
         return []
 
+def net_stats():
+    """活动网卡累计收发字节（PowerShell Get-NetAdapterStatistics，标准库实现）"""
+    try:
+        cmd = ['powershell', '-NoProfile', '-Command',
+               'Get-NetAdapterStatistics -ErrorAction SilentlyContinue | '
+               'Select-Object Name,ReceivedBytes,SentBytes | ConvertTo-Json -Compress']
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=8).stdout.strip()
+        if not out:
+            return []
+        d = json.loads(out)
+        arr = d if isinstance(d, list) else [d]
+        return [{'name': str(x.get('Name') or '?'), 'rx': int(x.get('ReceivedBytes') or 0),
+                 'tx': int(x.get('SentBytes') or 0)} for x in arr]
+    except Exception:
+        return []
+
 # ---------- 应用启动（白名单，防注入） ----------
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 if not os.path.exists(EDGE):
@@ -435,6 +451,12 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {'ok': False, 'msg': 'token 无效'})
                     return
                 self._json(200, {'ok': True, 'list': top_procs()})
+                return
+            if route == '/api/net':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
+                self._json(200, {'ok': True, 'list': net_stats()})
                 return
             if route == '/api/version':
                 try:

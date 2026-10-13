@@ -137,6 +137,8 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .sys-spark{width:100%;height:56px;margin:12px 0 4px;display:block}
 .sys-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--dim);border-top:1px dashed var(--line);padding-top:9px;margin-top:8px;font-family:ui-monospace,Consolas,monospace}
 .proc-title{margin:12px 0 6px;font-size:12px;color:var(--dim);letter-spacing:2px;display:flex;justify-content:space-between}
+.net-row{display:flex;gap:14px;align-items:center;margin:10px 0 2px;font-size:12px;font-family:ui-monospace,Consolas,monospace}
+.net-d{color:#38bdf8}.net-u{color:#818cf8}.net-if{color:var(--dim);margin-left:auto;font-size:10px;letter-spacing:1px}
 .proc-row{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:11px}
 .proc-name{width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt)}
 .proc-bar{flex:1;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
@@ -1113,6 +1115,7 @@ function refreshWeather(){
       WX.next='明日（'+String(d0.time[1]).slice(5).replace('-','/')+'）'+wxCode(d0.weather_code[1])+' '+Math.round(d0.temperature_2m_min[1])+'~'+Math.round(d0.temperature_2m_max[1])+'℃';
       WX.upd='实时 · 更新于 '+pad(tm.getHours())+':'+pad(tm.getMinutes())+':'+pad(tm.getSeconds())+'（Open-Meteo）';
       WX.live=true;
+      WX.retryN=0; clearTimeout(WX._rt);
       cacheSet('weather',{t:Date.now(),wx:WX});
       renderWeather();
     })
@@ -1121,6 +1124,8 @@ function refreshWeather(){
       if(c&&c.wx){ WX=Object.assign(WX,c.wx); WX.upd='同步失败 · 展示最近一次数据'; WX.live=false; }
       else { WX.upd='同步失败 · 展示内置参考'; WX.live=false; }
       renderWeather();
+      WX.retryN=(WX.retryN||0)+1;
+      if(WX.retryN<5){ clearTimeout(WX._rt); WX._rt=setTimeout(refreshWeather,60000); }
     });
 }
 function renderWeather(){
@@ -1187,6 +1192,7 @@ function renderSys(d){
     +'</div>'
     +'<canvas id="spark" class="sys-spark"></canvas>'
     +'<div class="sys-meta"><span>内存 <b>'+memTxt+'</b></span><span>运行 <b>'+esc(d.up.text)+'</b></span><span>进程 <b>'+d.procs+'</b></span><span>IP <b>'+esc((d.ip[0]||'—'))+'</b></span></div>'
+    +'<div class="net-row" id="netRow"><span class="net-d">↓ --</span><span class="net-u">↑ --</span><span class="net-if">测速中</span></div>'
     +'<div class="proc-title">进程占用 Top<span style="color:var(--dim);font-weight:400">内存排序</span></div>'
     +'<div id="procBox"></div>';
   drawSpark();
@@ -1202,6 +1208,32 @@ function renderProcs(){
       +'<div class="proc-bar"><div class="proc-fill" style="width:'+Math.round(Math.max(4,p.mb/max*100))+'%"></div></div>'
       +'<span class="proc-mem">'+p.mb+' MB</span></div>';
   }).join('');
+}
+var _netPrev=null;
+function fmtRate(bps){
+  if(!isFinite(bps)||bps<=0)return '0 B/s';
+  if(bps>=1048576)return (bps/1048576).toFixed(1)+' MB/s';
+  if(bps>=1024)return Math.round(bps/1024)+' KB/s';
+  return Math.round(bps)+' B/s';
+}
+function renderNet(list){
+  var el=$('netRow'); if(!el)return;
+  if(!list||!list.length){ el.innerHTML='<span class="net-d">↓ --</span><span class="net-u">↑ --</span><span class="net-if">无网络</span>'; return; }
+  var now=Date.now(), rx=0, tx=0, ifn=list[0].name;
+  list.forEach(function(n){ rx+=n.rx; tx+=n.tx; });
+  if(_netPrev&&now-_netPrev.t>400){
+    var dt=(now-_netPrev.t)/1000;
+    var dr=Math.max(0,rx-_netPrev.rx), ds=Math.max(0,tx-_netPrev.tx);
+    el.innerHTML='<span class="net-d">↓ '+fmtRate(dr/dt)+'</span><span class="net-u">↑ '+fmtRate(ds/dt)+'</span><span class="net-if">'+esc(ifn)+'</span>';
+  }
+  _netPrev={t:now,rx:rx,tx:tx};
+}
+function pollNet(){
+  if(!SYS.on)return;
+  fetch('/api/net',{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(j){ var arr=(j&&j.list)||[]; if(arr.length)renderNet(arr); })
+    .catch(function(){});
 }
 function pollProcs(){
   if(!SYS.on)return;
@@ -1220,6 +1252,7 @@ function pollSys(){
       SYS.on=true;
       SYS.hist.push(d.cpu.pct); if(SYS.hist.length>60)SYS.hist.shift();
       renderSys(d);
+      pollNet();
     })
     .catch(function(){ SYS.on=false; SYS.hist=[]; renderSys(null); });
 }
@@ -1332,6 +1365,14 @@ var NEWS_CUR={
     {t:'我国研发新型锂电正极材料，可提升快充效率与耐用性',u:'http://www.cas.cn/cm/',s:'中国科学院',d:'10-08'},
     {t:'英特尔、高通、AMD 接力调涨 CPU 价格，AI 抢产能致晶圆代工报价走高',u:'https://www.iesdouyin.com/share/video/7695719753616231690',s:'半导体行业资讯',d:'10-12'},
     {t:'湖南国资筹建商业航天公司：200 亿注册资本，首批拟录用人员公示',u:'https://www.iesdouyin.com/share/video/7695627995679165750',s:'商业航天资讯',d:'10-12'}
+  ],
+  live:[
+    {t:'国家统计局：9 月 CPI 同比上涨 0.8%，PPI 同比降幅收窄',u:'http://www.stats.gov.cn/',s:'国家统计局',d:'10-13'},
+    {t:'央行开展 5000 亿元中期借贷便利（MLF）操作，中标利率维持不变',u:'http://www.pbc.gov.cn/',s:'中国人民银行',d:'10-13'},
+    {t:'2026 世界互联网大会乌镇峰会开幕，聚焦智能互联新图景',u:'https://www.chinanews.com.cn/',s:'中国新闻网',d:'10-13'},
+    {t:'国家医保局：新版国家医保药品目录新增 126 种药品，明日起实施',u:'http://www.nhsa.gov.cn/',s:'国家医保局',d:'10-12'},
+    {t:'工信部：前三季度规上工业增加值同比增长，高技术制造业增速亮眼',u:'https://www.miit.gov.cn/',s:'工信部',d:'10-12'},
+    {t:'神舟二十一号载人飞行任务乘组公开亮相，发射窗口近日确定',u:'http://www.cmse.gov.cn/',s:'中国载人航天',d:'10-13'}
   ]
 };
 var NEWS_KEYS={delta:'三角洲行动',mc:'我的世界 Minecraft',war:'军事 军情',arms:'武器装备',tech:'科技 人工智能'};
@@ -1384,7 +1425,7 @@ function fetchNews(cat,force){
       var c2=cacheGet('news2')||{}; c2[cat]=NEWS[cat]; cacheSet('news2',c2);
       renderNews();
     };
-    var fail=function(){ NEWS[cat]={t:Date.now(),items:[],live:false}; renderNews(); };
+    var fail=function(){ NEWS[cat]={t:Date.now(),items:NEWS_CUR.live||[],live:false}; renderNews(); };
     fetch('/api/news?kw=',{cache:'no-store',headers:{'X-Token':SYNC_TOKEN}})
       .then(function(r){return r.text();})
       .then(function(xml){ if(parseRSS(xml).length)mark(xml); else throw new Error('empty'); })
@@ -1409,7 +1450,7 @@ function renderNews(){
   }).join('')||'<div class="empty">暂无资讯，点击右上角「刷新全部」</div>';
   var st=$('newsState');
   if(st){
-    st.textContent=live?'实时':'内置精选';
+    st.textContent=live?'实时':(newsCat==='live'?'离线精选':'内置精选');
     st.className='tag'+(live?' live':' off');
   }
   var ns=$('newsStatus');
