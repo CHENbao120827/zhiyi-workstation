@@ -128,6 +128,27 @@ def up_text(s):
         return '%d 小时 %d 分' % (h, m)
     return '%d 分钟' % m
 
+def top_procs(n=8):
+    """进程占用 Top：按内存排序（PowerShell Get-Process，标准库实现）"""
+    try:
+        cmd = ['powershell', '-NoProfile', '-Command',
+               'Get-Process -ErrorAction SilentlyContinue | Sort-Object WS -Descending | '
+               'Select-Object -First %d Name,WS,CPU | ConvertTo-Json -Compress' % n]
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=8).stdout.strip()
+        if not out:
+            return []
+        d = json.loads(out)
+        arr = d if isinstance(d, list) else [d]
+        res = []
+        for x in arr:
+            if not isinstance(x, dict):
+                continue
+            res.append({'name': str(x.get('Name') or '?'), 'mb': int(round((x.get('WS') or 0) / 1048576)),
+                        'cpu': round(float(x.get('CPU') or 0), 1)})
+        return res
+    except Exception:
+        return []
+
 # ---------- 应用启动（白名单，防注入） ----------
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 if not os.path.exists(EDGE):
@@ -408,6 +429,12 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {'ok': False, 'msg': 'token 无效'})
                     return
                 self._json(200, sys_status())
+                return
+            if route == '/api/procs':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
+                self._json(200, {'ok': True, 'list': top_procs()})
                 return
             if route == '/api/version':
                 try:
