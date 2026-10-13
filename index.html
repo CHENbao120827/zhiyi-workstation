@@ -208,6 +208,9 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .lp-card .lp-btn.lp-sm{width:auto;padding:8px 18px;font-size:12.5px;letter-spacing:1px;flex:none}
 .lp-del{cursor:pointer;color:var(--dim);font-size:13px;flex:none;padding:4px;opacity:.7}
 .lp-del:hover{color:var(--bad);opacity:1}
+.lp-card[draggable]{cursor:grab}
+.lp-card.dragging{opacity:.4}
+.lp-card.drag-ov{border-color:#38bdf8;box-shadow:0 0 0 1px rgba(56,189,248,.5),0 8px 24px rgba(56,189,248,.15)}
 /* 新闻 */
 .newstabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
 .ntab{padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--sub);background:var(--card2);border:1px solid var(--line);transition:.15s;font-family:inherit}
@@ -1365,7 +1368,7 @@ function renderLpExtra(){
   var arr=getExtra();
   if(!arr.length){ el.innerHTML='<div class="empty" style="text-align:center">还没有自定义发射台，上面添加一个</div>'; return; }
   el.innerHTML=arr.map(function(a){
-    return '<div class="lp-card"><span class="lp-ic" style="font-size:26px">'+(a.ic||'🚀')+'</span>'
+    return '<div class="lp-card" draggable="true" data-id="'+a.id+'"><span class="lp-ic" style="font-size:26px">'+(a.ic||'🚀')+'</span>'
       +'<div class="lp-info"><div class="lp-name" style="font-size:13.5px">'+esc(a.name)+'</div>'
       +'<div class="lp-path" style="margin:2px 0 0">'+esc(a.path)+'</div></div>'
       +'<button class="primary lp-btn lp-sm" data-app="custom" data-path="'+esc(a.path)+'">点火</button>'
@@ -1390,6 +1393,41 @@ document.addEventListener('click',function(e){
   }
   var f=e.target.closest('.lp-btn');
   if(f&&f.getAttribute('data-app')==='custom'){ lpFire(f); }
+});
+var _dragId=null;
+document.addEventListener('dragstart',function(e){
+  var c=e.target.closest('.lp-card'); if(!c)return;
+  _dragId=c.getAttribute('data-id');
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',_dragId||'');
+  c.classList.add('dragging');
+});
+document.addEventListener('dragend',function(e){
+  var c=e.target.closest('.lp-card'); if(c)c.classList.remove('dragging');
+  document.querySelectorAll('.lp-card.drag-ov').forEach(function(x){x.classList.remove('drag-ov');});
+  _dragId=null;
+});
+document.addEventListener('dragover',function(e){
+  var c=e.target.closest('.lp-card'); if(!c)return;
+  e.preventDefault();
+  c.classList.add('drag-ov');
+});
+document.addEventListener('dragleave',function(e){
+  var c=e.target.closest('.lp-card'); if(c)c.classList.remove('drag-ov');
+});
+document.addEventListener('drop',function(e){
+  var c=e.target.closest('.lp-card'); if(!c)return;
+  e.preventDefault();
+  document.querySelectorAll('.lp-card.drag-ov').forEach(function(x){x.classList.remove('drag-ov');});
+  if(!_dragId||_dragId===c.getAttribute('data-id'))return;
+  var arr=S.launchExtra||[];
+  var from=-1,to=-1;
+  for(var i=0;i<arr.length;i++){ if(arr[i].id===_dragId)from=i; if(arr[i].id===c.getAttribute('data-id'))to=i; }
+  if(from<0||to<0)return;
+  var it=arr.splice(from,1)[0];
+  arr.splice(to,0,it);
+  S.launchExtra=arr;
+  save(); renderLpExtra(); toast('发射台顺序已调整');
 });
 
 /* ---------- 新闻（实时引擎：Bing RSS 经代理，失败回退内置精选） ---------- */
