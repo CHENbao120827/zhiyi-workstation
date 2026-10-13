@@ -409,6 +409,13 @@ canvas{width:100%;display:block}
   background:#0c1428;border:1px solid var(--line2);color:#fff;padding:9px 20px;border-radius:10px;
   font-size:12.5px;transition:.3s;z-index:99;box-shadow:0 10px 30px rgba(2,6,18,.6);max-width:80vw}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#remindBox{position:fixed;top:18px;right:18px;z-index:130;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.remind-item{pointer-events:auto;max-width:300px;background:rgba(8,13,30,.94);border:1px solid rgba(56,189,248,.45);border-left:3px solid #38bdf8;border-radius:12px;padding:10px 14px;color:#e0f2fe;font-size:13px;line-height:1.5;box-shadow:0 10px 34px rgba(0,0,0,.5);cursor:pointer;animation:rmIn .35s ease;letter-spacing:.4px}
+.remind-item.warn{border-left-color:#f47070}
+.remind-item .rm-t{font-weight:700;margin-bottom:2px;font-size:12px;letter-spacing:1px}
+.remind-item.warn .rm-t{color:#f47070}
+.remind-item:not(.warn) .rm-t{color:#38bdf8}
+@keyframes rmIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
 @media (max-width:720px){
   .wrap{padding:14px 14px 56px}
   .mainnav{margin-left:0;width:100%}
@@ -805,6 +812,7 @@ canvas{width:100%;display:block}
   <span style="margin-left:auto;font-size:11px;color:var(--dim);letter-spacing:1px">智己工作站 · 完全版</span>
 </div>
 <div id="toast"></div>
+    <div id="remindBox"></div>
 <button id="cmdFab" title="命令面板 (Ctrl+Shift+K)">⌘</button>
 <div id="cmdMask">
   <div id="cmdPanel">
@@ -1022,6 +1030,29 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 function pad(n){ return String(n).padStart(2,'0'); }
 function fmt(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 function today(){ return fmt(new Date()); }
+var _dueNotified={};
+function showRemind(title,msg,warn){
+  var bx=$('remindBox'); if(!bx)return;
+  if(bx.childElementCount>3)return;   // 最多同时 3 条，避免刷屏
+  var d=document.createElement('div');
+  d.className='remind-item'+(warn?' warn':'');
+  d.innerHTML='<div class="rm-t">'+title+'</div><div>'+msg+'</div>';
+  d.addEventListener('click',function(){ switchView('todo'); });
+  bx.appendChild(d);
+  setTimeout(function(){ d.style.transition='opacity .4s'; d.style.opacity='0'; setTimeout(function(){d.remove();},420); }, 6000);
+}
+function checkDueReminder(){
+  if(!S.tasks)return;
+  var soon=S.tasks.filter(function(t){return !t.done&&t.due&&t.due<=today();});
+  var fresh=soon.filter(function(t){return !_dueNotified[t.id];});
+  if(!fresh.length)return;
+  var od=fresh.filter(function(t){return t.due<today();}).length;
+  var tdy=fresh.filter(function(t){return t.due===today();}).length;
+  if(tdy)showRemind('⏰ 今日截止',tdy+' 个任务今天到期，点击查看',false);
+  if(od)showRemind('⚠ 任务过期',od+' 个任务已过期'+soon[0].due+' 起，点击处理',true);
+  fresh.forEach(function(t){_dueNotified[t.id]=1;});
+}
+setInterval(checkDueReminder,60*1000);
 function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(function(){t.classList.remove('show');},2400); }
 function gb(n){ return Math.round(n/1073741824*10)/10; }
 function mb(n){ return Math.round(n/1048576); }
@@ -2520,6 +2551,7 @@ function dailyPick(list,key){
   return i;
 }
 function renderDaily(){
+  checkDueReminder();
   var w=$('weaponBox');
   if(w){ var a=WEAPONS[dailyPick(WEAPONS,'weapon.day')];
     w.innerHTML='<div class="wx-temp" style="font-size:12.5px;margin:4px 0">'+esc(a.n)+'</div>'+
