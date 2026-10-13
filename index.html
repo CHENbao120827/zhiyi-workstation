@@ -239,6 +239,10 @@ button.primary{background:linear-gradient(135deg,#2b5cff,#4d7cff);border:none;co
 button.primary:hover{filter:brightness(1.1)}
 button.danger:hover{color:var(--bad);border-color:rgba(244,112,112,.5)}
 .add-row{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:13px}
+.pick-box{margin:0 0 14px;padding:20px 24px;text-align:center;background:linear-gradient(135deg,rgba(56,189,248,.1),rgba(77,124,255,.12));border:1px solid rgba(56,189,248,.35);border-radius:14px;cursor:pointer;animation:pickIn .4s ease;letter-spacing:.5px}
+@keyframes pickIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.pick-q{font-size:16.5px;font-weight:600;color:#e0f2fe;line-height:1.7}
+.pick-m{margin-top:10px;font-size:11.5px;color:var(--dim);letter-spacing:1px}
 .add-row input[type=text]{flex:1;min-width:180px}
 select{min-width:120px}
 .filters{display:flex;gap:7px;margin-bottom:13px;flex-wrap:wrap}
@@ -643,7 +647,8 @@ canvas{width:100%;display:block}
         <button class="tag-chip" data-tag="task">✅ 任务</button>
         <button class="tag-chip" data-tag="fav">🔖 收藏</button>
       </div>
-      <div class="add-row"><button id="btnAddNote" class="primary">保存灵感</button></div>
+      <div class="add-row"><button id="btnAddNote" class="primary">保存灵感</button><button id="btnPickNote" class="primary" style="flex:none;letter-spacing:1px">🎲 随机拾取</button></div>
+      <div id="pickBox" class="pick-box" style="display:none"></div>
       <div id="noteList"></div>
     </div>
   </section>
@@ -2060,6 +2065,17 @@ document.querySelectorAll('#noteTagRow .tag-chip').forEach(function(x){
   x.addEventListener('click',function(){setNoteTag(x.getAttribute('data-tag'));});
 });
 if(S&&S.noteTag)setNoteTag(S.noteTag);
+function pickNote(){
+  var el=$('pickBox'); if(!el)return;
+  var arr=(S.notes||[]).filter(function(n){return n.text;});
+  if(!arr.length){ el.style.display='block'; el.innerHTML='<div class="pick-q">还没有灵感，先记一条</div><div class="pick-m">点击关闭</div>'; return; }
+  var n=arr[Math.floor(Math.random()*arr.length)];
+  var d=new Date(n.ts);
+  el.style.display='block';
+  el.innerHTML='<div class="pick-q">'+esc(n.text)+'</div><div class="pick-m">'+NTF[n.tag||'idea']+' · '+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' · 点击再翻一条</div>';
+}
+$('btnPickNote').addEventListener('click',pickNote);
+$('pickBox').addEventListener('click',function(){ if(!S.notes||!S.notes.length){ this.style.display='none'; } else { pickNote(); } });
 $('btnAddNote').addEventListener('click',addNote);
 $('noteInput').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))addNote(); });
 $('noteList').addEventListener('click',function(e){
