@@ -152,6 +152,14 @@ APPS = {
     'space': {'cmd': r'D:\sfs\航天模拟器PC1.5\Spaceflight Simulator\Spaceflight Simulator.exe', 'name': '航天模拟器'},
 }
 
+def _is_local(ip):
+    if not ip:
+        return False
+    ip = ip.split('%')[0]
+    if ip in ('127.0.0.1', '::1', '::ffff:127.0.0.1'):
+        return True
+    return ip.startswith('192.168.') or ip.startswith('10.') or ip.startswith('172.16') or ip.startswith('172.17') or ip.startswith('172.18') or ip.startswith('172.19')
+
 def launch_app(key):
     a = APPS.get(key)
     if not a:
@@ -424,6 +432,20 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 qs = urllib.parse.parse_qs(u.query)
                 key = (qs.get('app') or [''])[0]
+                if key == 'custom':
+                    path = (qs.get('path') or [''])[0]
+                    if not _is_local(self.client_address[0]):
+                        self._json(403, {'ok': False, 'msg': '仅本机或局域网可启动自定义程序'})
+                        return
+                    if not path or not os.path.exists(path):
+                        self._json(404, {'ok': False, 'msg': '路径不存在：' + path})
+                        return
+                    try:
+                        os.startfile(path)
+                        self._json(200, {'ok': True, 'msg': '已启动 ' + os.path.basename(path)})
+                    except Exception as e:
+                        self._json(500, {'ok': False, 'msg': '启动失败：' + str(e)})
+                    return
                 self._json(200, launch_app(key))
                 return
             if route == '/api/service':

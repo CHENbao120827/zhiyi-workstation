@@ -192,6 +192,13 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .lp-name{font-size:16px;font-weight:650;letter-spacing:1px}
 .lp-path{font-size:10.5px;color:var(--dim);margin:6px auto 16px;word-break:break-all;max-width:92%;font-family:ui-monospace,Consolas,monospace}
 .lp-btn{width:100%;padding:11px 0;font-size:14px;letter-spacing:3px}
+.lp-add{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.lp-add input{width:100%}
+.lp-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:rgba(255,255,255,.03);text-align:left}
+.lp-info{flex:1;min-width:0}
+.lp-card .lp-btn.lp-sm{width:auto;padding:8px 18px;font-size:12.5px;letter-spacing:1px;flex:none}
+.lp-del{cursor:pointer;color:var(--dim);font-size:13px;flex:none;padding:4px;opacity:.7}
+.lp-del:hover{color:var(--bad);opacity:1}
 /* 新闻 */
 .newstabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
 .ntab{padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--sub);background:var(--card2);border:1px solid var(--line);transition:.15s;font-family:inherit}
@@ -711,8 +718,18 @@ canvas{width:100%;display:block}
         <div class="lp-path">D:\sfs\航天模拟器PC1.5\Spaceflight Simulator\Spaceflight Simulator.exe</div>
         <button class="primary lp-btn" data-app="space">点火启动</button>
       </div>
+      <div class="card launch-pad">
+        <div class="card-title">Custom Pad <span class="tag">自定义发射台</span></div>
+        <div class="lp-add">
+          <input id="lpName" type="text" placeholder="名称，如：星火之星">
+          <input id="lpPath" type="text" placeholder="程序完整路径，如：D:\apps\spark.exe">
+          <input id="lpIc" type="text" placeholder="图标" style="max-width:64px">
+          <button id="btnLpAdd" class="primary">添加发射台</button>
+        </div>
+        <div id="lpExtra"></div>
+      </div>
     </div>
-    <div class="news-note">一键起飞本机程序 · 想加新程序随时接入</div>
+    <div class="news-note">一键起飞本机程序 · 自定义发射台保存在云端</div>
   
   
 </section>
@@ -1072,14 +1089,50 @@ $('launchGrid').addEventListener('click',function(e){
     .catch(function(){ toast('后端未连接，先双击「启动工作台.bat」'); });
 });
 /* ---------- 马上起飞（本机游戏/程序一键启动） ---------- */
+function lpFire(b){
+  var app=b.getAttribute('data-app');
+  var path=b.getAttribute('data-path')||'';
+  var url='/api/open?app='+app+(path?'&path='+encodeURIComponent(path):'');
+  fetch(url,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(j){ toast(j.ok?j.msg:('启动失败：'+j.msg)); })
+    .catch(function(){ toast('后端未连接，先双击「启动工作台.bat」'); });
+}
 document.querySelectorAll('.lp-btn').forEach(function(b){
-  b.addEventListener('click',function(){
-    var app=b.getAttribute('data-app');
-    fetch('/api/open?app='+app,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
-      .then(function(r){return r.json();})
-      .then(function(j){ toast(j.ok?j.msg:('启动失败：'+j.msg)); })
-      .catch(function(){ toast('后端未连接，先双击「启动工作台.bat」'); });
-  });
+  b.addEventListener('click',function(){lpFire(b);});
+});
+var LS2='lp.extra';
+function getExtra(){ return (S&&S.launchExtra)||[]; }
+function renderLpExtra(){
+  var el=$('lpExtra'); if(!el)return;
+  var arr=getExtra();
+  if(!arr.length){ el.innerHTML='<div class="empty" style="text-align:center">还没有自定义发射台，上面添加一个</div>'; return; }
+  el.innerHTML=arr.map(function(a){
+    return '<div class="lp-card"><span class="lp-ic" style="font-size:26px">'+(a.ic||'🚀')+'</span>'
+      +'<div class="lp-info"><div class="lp-name" style="font-size:13.5px">'+esc(a.name)+'</div>'
+      +'<div class="lp-path" style="margin:2px 0 0">'+esc(a.path)+'</div></div>'
+      +'<button class="primary lp-btn lp-sm" data-app="custom" data-path="'+esc(a.path)+'">点火</button>'
+      +'<span class="lp-del" data-id="'+a.id+'" title="删除">✕</span></div>';
+  }).join('');
+}
+function addLp(){
+  var n=$('lpName').value.trim(), p=$('lpPath').value.trim();
+  if(!n||!p){ toast('名称和路径都要填'); return; }
+  if(!S.launchExtra)S.launchExtra=[];
+  S.launchExtra.unshift({id:uid(),name:n,path:p,ic:$('lpIc').value.trim()||'🚀'});
+  $('lpName').value=''; $('lpPath').value=''; $('lpIc').value='';
+  save(); renderLpExtra(); toast('发射台已添加');
+}
+$('btnLpAdd').addEventListener('click',addLp);
+document.addEventListener('click',function(e){
+  var d=e.target.closest('.lp-del');
+  if(d){
+    var id=d.getAttribute('data-id');
+    S.launchExtra=(S.launchExtra||[]).filter(function(a){return a.id!==id;});
+    save(); renderLpExtra(); return;
+  }
+  var f=e.target.closest('.lp-btn');
+  if(f&&f.getAttribute('data-app')==='custom'){ lpFire(f); }
 });
 
 /* ---------- 新闻（实时引擎：Bing RSS 经代理，失败回退内置精选） ---------- */
