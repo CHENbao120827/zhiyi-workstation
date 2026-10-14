@@ -226,6 +226,9 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .lp-add{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .lp-add input{width:100%}
 .lp-card{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;background:rgba(255,255,255,.03);text-align:left}
+.lp-miss{opacity:.55;filter:grayscale(.5)}
+.lp-miss .lp-btn{background:rgba(125,211,252,.12);color:var(--dim);border-color:rgba(125,211,252,.25)}
+.lp-miss .lp-btn:hover{box-shadow:none}
 .lp-info{flex:1;min-width:0}
 .lp-card .lp-btn.lp-sm{width:auto;padding:8px 18px;font-size:12.5px;letter-spacing:1px;flex:none}
 .lp-del{cursor:pointer;color:var(--dim);font-size:13px;flex:none;padding:4px;opacity:.7}
@@ -803,14 +806,14 @@ canvas{width:100%;display:block}
         <div class="lp-ic">🚀</div>
         <div class="lp-name">火星之心</div>
         <div class="lp-path">C:\Users\ChenZ\Desktop\Python小游戏\火星之心.exe</div>
-        <button class="primary lp-btn" data-app="mars">点火启动</button>
+        <button class="primary lp-btn" data-app="mars" data-path="C:\Users\ChenZ\Desktop\Python小游戏\火星之心.exe">点火启动</button>
       </div>
       <div class="card launch-pad">
         <div class="card-title">Launch Pad 02 <span class="tag">航天模拟</span></div>
         <div class="lp-ic">🛸</div>
         <div class="lp-name">航天模拟器 Spaceflight Simulator</div>
         <div class="lp-path">D:\sfs\航天模拟器PC1.5\Spaceflight Simulator\Spaceflight Simulator.exe</div>
-        <button class="primary lp-btn" data-app="space">点火启动</button>
+        <button class="primary lp-btn" data-app="space" data-path="D:\sfs\航天模拟器PC1.5\Spaceflight Simulator\Spaceflight Simulator.exe">点火启动</button>
       </div>
       <div class="card launch-pad">
         <div class="card-title">Custom Pad <span class="tag">自定义发射台</span></div>
@@ -1425,7 +1428,23 @@ $('launchGrid').addEventListener('click',function(e){
     .catch(function(){ toast('后端未连接，先双击「启动工作台.bat」'); });
 });
 /* ---------- 马上起飞（本机游戏/程序一键启动） ---------- */
+function checkLp(){
+  document.querySelectorAll('.lp-btn[data-app]').forEach(function(b){
+    var path=b.getAttribute('data-path')||'';
+    if(!path)return;
+    fetch('/api/exist?path='+encodeURIComponent(path),{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
+      .then(function(r){return r.json();})
+      .then(function(j){
+        if(!j.ok||!j.exists){
+          var card=b.closest('.launch-pad')||b.closest('.lp-card');
+          if(card)card.classList.add('lp-miss');
+          b.textContent='未安装'; b.classList.add('miss'); b.setAttribute('data-miss','1');
+        }
+      }).catch(function(){});
+  });
+}
 function lpFire(b){
+  if(b.getAttribute('data-miss')){ toast('该程序路径不存在（仅原电脑可用）'); return; }
   var app=b.getAttribute('data-app');
   var path=b.getAttribute('data-path')||'';
   var url='/api/open?app='+app+(path?'&path='+encodeURIComponent(path):'');
@@ -2886,6 +2905,7 @@ function renderAll(){
   renderDaily(); renderOverview();
   renderMiniTodo(); renderTasks(); renderHabits(); renderHabitCal(); renderGoals(); renderNotes(); renderFocus();
   if(cur==='data')renderData();
+  checkLp();
 }
 tickClock(); setInterval(tickClock,1000);
 var defDate=new Date(); defDate.setDate(defDate.getDate()+30);

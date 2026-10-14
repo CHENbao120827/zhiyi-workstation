@@ -497,6 +497,17 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 self._json(200, launch_app(key))
                 return
+            if route == '/api/exist':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
+                qs = urllib.parse.parse_qs(u.query)
+                path = (qs.get('path') or [''])[0]
+                if not _is_local(self.client_address[0]):
+                    self._json(403, {'ok': False, 'msg': '仅本机或局域网可检查'})
+                    return
+                self._json(200, {'ok': True, 'exists': bool(path and os.path.exists(path))})
+                return
             if route == '/api/service':
                 if not check_token(self.headers):
                     self._json(401, {'ok': False, 'msg': 'token 无效'})
