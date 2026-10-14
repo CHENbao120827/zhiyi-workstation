@@ -132,6 +132,11 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .astro-p span{display:block;font-size:10px;color:var(--dim);line-height:1.55}
 .astro-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line)}
 .astro-row:last-child{border-bottom:none}
+.astro-week{display:flex;gap:2px;margin-top:6px;padding-top:7px;border-top:1px dashed var(--line)}
+.aw-d{flex:1;text-align:center}
+.aw-d svg{display:block;margin:0 auto}
+.aw-d span{display:block;font-size:10px;color:var(--sky);margin-top:3px}
+.aw-d em{display:block;font-size:8.5px;font-style:normal;color:var(--dim);margin-top:1px;line-height:1.3}
 .wx-fc::-webkit-scrollbar{height:4px}
 .wx-fc::-webkit-scrollbar-thumb{background:rgba(56,189,248,.4);border-radius:4px}
 .wx-fc-item{flex:0 0 64px;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:9px 3px 7px}
@@ -2805,10 +2810,11 @@ function moonPath(ph){
   }
   return 'M'+x+',2 A'+r+','+r+' 0 0 0 '+x+',22 A'+cx+','+r+' 0 0 '+(th<=3*Math.PI/2?'1':'0')+' '+x+',2 Z';
 }
-function moonSvg(ph){
-  return '<svg viewBox="0 0 24 24" width="38" height="38" style="vertical-align:middle;flex:none"><defs><clipPath id="mcMoon"><circle cx="12" cy="12" r="10"/></clipPath></defs>'
+function moonSvg(ph,sz){
+  sz=sz||38;
+  return '<svg viewBox="0 0 24 24" width="'+sz+'" height="'+sz+'" style="vertical-align:middle;flex:none">'
     +'<circle cx="12" cy="12" r="10" fill="#0b1522" stroke="rgba(125,211,252,.4)"/>'
-    +'<g clip-path="url(#mcMoon)"><path d="'+moonPath(ph)+'" fill="rgba(253,224,71,.85)"/></g></svg>';
+    +'<path d="'+moonPath(ph)+'" fill="rgba(253,224,71,.85)"/></svg>';
 }
 function cometSvg(){
   return '<svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:middle;flex:none"><circle cx="17" cy="8" r="3" fill="rgba(125,211,252,.9)"/><path d="M15 10L3 20M14 9L6 15M16 11L9 19" stroke="rgba(125,211,252,.55)" stroke-width="1.6" stroke-linecap="round"/></svg>';
@@ -2819,7 +2825,18 @@ function renderAstro(){
   var nm=['新月','娥眉月','上弦月','盈凸月','满月','亏凸月','下弦月','残月'][Math.round(ph*8)%8];
   var ill=Math.round((1-Math.cos(ph*2*Math.PI))/2*100);
   var mm=$('astroMoon');
-  if(mm)mm.innerHTML='<div class="astro-row"><span style="display:flex;align-items:center;justify-content:center;width:46px;height:46px">'+moonSvg(ph)+'</span><span style="flex:1"><b style="font-size:13px">'+nm+'</b><br><span style="font-size:10.5px;color:var(--dim)">亮度 '+ill+'%</span></span></div>';
+  if(mm){
+    var nm7=['新月','娥眉','上弦','盈凸','满月','亏凸','下弦','残月'];
+    var wd=['日','一','二','三','四','五','六'];
+    var wk='<div class="astro-week">';
+    for(var i=0;i<7;i++){
+      var dt=new Date(Date.now()+i*86400000);
+      var p2=((dt.getTime()-Date.UTC(2000,0,6,18,14))%syn+syn)%syn/syn;
+      wk+='<div class="aw-d">'+moonSvg(p2,22)+'<span>'+(i===0?'今':'周'+wd[dt.getDay()])+'</span><em>'+nm7[Math.round(p2*8)%8]+'</em></div>';
+    }
+    wk+='</div>';
+    mm.innerHTML='<div class="astro-row"><span style="display:flex;align-items:center;justify-content:center;width:46px;height:46px">'+moonSvg(ph)+'</span><span style="flex:1"><b style="font-size:13px">'+nm+'</b><br><span style="font-size:10.5px;color:var(--dim)">亮度 '+ill+'%</span></span></div>'+wk;
+  }
   var mr=$('astroMeteor');
   if(mr){
     var now=new Date(),y=now.getFullYear();
