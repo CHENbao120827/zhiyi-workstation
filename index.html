@@ -122,8 +122,10 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .wx-link{display:inline-flex;gap:5px;margin-top:8px;font-size:12px;color:var(--sky);text-decoration:none;letter-spacing:1px;transition:.15s}
 .wx-link:hover{color:#7cd9ff}
 .wx-upd{font-size:10px;color:var(--dim);margin-top:6px;font-family:ui-monospace,Consolas,monospace}
-.wx-fc{display:flex;gap:8px;margin-top:12px}
-.wx-fc-item{flex:1;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:9px 3px 7px}
+.wx-fc{display:flex;gap:8px;margin-top:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:rgba(56,189,248,.4) transparent}
+.wx-fc::-webkit-scrollbar{height:4px}
+.wx-fc::-webkit-scrollbar-thumb{background:rgba(56,189,248,.4);border-radius:4px}
+.wx-fc-item{flex:0 0 64px;text-align:center;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:9px 3px 7px}
 .wx-fc-item.today{border-color:rgba(56,189,248,.45);background:rgba(56,189,248,.07)}
 .wx-fc-day{font-size:11px;color:var(--sub);letter-spacing:1px}
 .wx-fc-ic{font-size:20px;margin:3px 0 2px}
@@ -1175,7 +1177,7 @@ function wxCode(c){return WMO[c]||('天气代码 '+c);}
 function cacheGet(k){ try{ var r=localStorage.getItem('garden.live.v1'); if(r){ var d=JSON.parse(r); return d[k]; } }catch(e){} return null; }
 function cacheSet(k,v){ try{ var r=localStorage.getItem('garden.live.v1'); var d=r?JSON.parse(r):{}; d[k]=v; localStorage.setItem('garden.live.v1',JSON.stringify(d)); }catch(e){} }
 function refreshWeather(){
-  var p1=fetch('https://api.open-meteo.com/v1/forecast?latitude='+GEO.lat+'&longitude='+GEO.lon+'&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset&timezone=Asia%2FShanghai&forecast_days=3');
+  var p1=fetch('https://api.open-meteo.com/v1/forecast?latitude='+GEO.lat+'&longitude='+GEO.lon+'&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset&timezone=Asia%2FShanghai&forecast_days=7');
   var p2=fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude='+GEO.lat+'&longitude='+GEO.lon+'&current=us_aqi,pm10&timezone=Asia%2FShanghai');
   Promise.all([p1,p2])
     .then(function(rs){ return Promise.all(rs.map(function(r){return r.json();})); })
@@ -1194,8 +1196,9 @@ function refreshWeather(){
       WX.dress=dressAdvice(WX);
       WX.sun='日出 '+String(d0.sunrise[0]).slice(11,16)+' / 日落 '+String(d0.sunset[0]).slice(11,16);
       WX.next='明日（'+String(d0.time[1]).slice(5).replace('-','/')+'）'+wxCode(d0.weather_code[1])+' '+Math.round(d0.temperature_2m_min[1])+'~'+Math.round(d0.temperature_2m_max[1])+'℃';
-      WX.fc=[0,1,2].map(function(i){
-        var day=i===0?'今天':(i===1?'明天':'后天');
+      WX.fc=[0,1,2,3,4,5,6].map(function(i){
+        var wk=['周日','周一','周二','周三','周四','周五','周六'][new Date(d0.time[i]+'T00:00:00').getDay()];
+        var day=i===0?'今天':(i===1?'明天':wk);
         return {d:day,code:d0.weather_code[i],low:Math.round(d0.temperature_2m_min[i]),high:Math.round(d0.temperature_2m_max[i])};
       });
       WX.upd='实时 · 更新于 '+pad(tm.getHours())+':'+pad(tm.getMinutes())+':'+pad(tm.getSeconds())+'（Open-Meteo）';
