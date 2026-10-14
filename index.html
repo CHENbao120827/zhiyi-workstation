@@ -184,6 +184,13 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .ov-item.ov-done .ov-v{color:#52c41a}
 .mini-warn{background:rgba(234,102,104,.10);border:1px solid rgba(234,102,104,.30);color:#ff8b8b;font-size:12px;padding:6px 10px;border-radius:8px;margin-bottom:8px;letter-spacing:.5px}
 .launch-hint{font-size:10.5px;color:var(--dim);margin-top:10px;letter-spacing:.5px}
+.launch-add-row{display:none;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center}
+.launch-add-row input{background:rgba(8,16,32,.6);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:6px 9px;font-size:12px;min-width:0}
+.launch-add-row input:focus{outline:none;border-color:#38bdf8}
+.lc-del{position:absolute;top:4px;right:6px;font-size:10px;color:var(--dim);background:rgba(8,16,32,.7);border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center;cursor:pointer}
+.launch-btn{position:relative}
+.launch-btn.lc-add{border-style:dashed;color:var(--sub)}
+.launch-btn.lc-add:hover{color:var(--txt)}
 /* 日历 */
 .cal-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .cal-title{flex:1;font-size:14px;font-weight:650;letter-spacing:1px}
@@ -546,7 +553,14 @@ canvas{width:100%;display:block}
       <div class="card">
         <div class="card-title">Quick Launch <span class="tag">本机应用</span></div>
         <div class="launch-grid" id="launchGrid"></div>
-        <div class="launch-hint">一键启动常用软件</div>
+        <div class="launch-add-row" id="launchAddRow">
+          <input id="lcName" type="text" placeholder="名称，如：星火之星">
+          <input id="lcPath" type="text" placeholder="程序完整路径，如：D:\apps\spark.exe">
+          <input id="lcIc" type="text" placeholder="图标" style="max-width:56px">
+          <button id="btnLcAdd" class="primary" style="padding:5px 11px">添加</button>
+          <button id="btnLcCancel" style="padding:5px 11px">取消</button>
+        </div>
+        <div class="launch-hint">一键启动常用软件 · 点「＋」添加本机程序</div>
       </div>
     </div>
 
@@ -1413,20 +1427,47 @@ var LAUNCH=[
   {key:'powershell',name:'终端',ic:'⌨️'},{key:'taskmgr',name:'任务管理器',ic:'📊'},
   {key:'settings',name:'系统设置',ic:'⚙️'},{key:'cmd',name:'命令提示符',ic:'🖥️'}
 ];
+function lcCustom(){ try{ var a=JSON.parse(localStorage.getItem('lc.custom')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function lcSave(a){ localStorage.setItem('lc.custom',JSON.stringify(a)); }
 function renderLaunch(){
   var el=$('launchGrid'); if(!el)return;
-  el.innerHTML=LAUNCH.map(function(a){
+  var h=LAUNCH.map(function(a){
     return '<button class="launch-btn" data-key="'+a.key+'" title="启动 '+esc(a.name)+'"><span class="ic">'+a.ic+'</span>'+esc(a.name)+'</button>';
-  }).join('');
+  });
+  lcCustom().forEach(function(c){
+    h.push('<button class="launch-btn" data-custom="1" data-path="'+esc(c.path)+'" title="启动 '+esc(c.name)+'"><span class="ic">'+esc(c.ic||'🚀')+'</span>'+esc(c.name)+'<span class="lc-del" title="删除">✕</span></button>');
+  });
+  h.push('<button class="launch-btn lc-add" title="添加自定义应用"><span class="ic">➕</span>添加</button>');
+  el.innerHTML=h.join('');
 }
+function lcShow(show){ var r=$('launchAddRow'); if(r)r.style.display=show?'flex':'none'; }
 $('launchGrid').addEventListener('click',function(e){
+  var del=e.target.closest('.lc-del');
+  if(del){
+    var btn=del.closest('.launch-btn'); if(!btn)return;
+    var p=btn.getAttribute('data-path');
+    lcSave(lcCustom().filter(function(c){return c.path!==p;}));
+    renderLaunch(); toast('已删除自定义应用'); return;
+  }
   var b=e.target.closest('.launch-btn'); if(!b)return;
+  if(b.classList.contains('lc-add')){ lcShow(true); return; }
   var key=b.getAttribute('data-key');
-  fetch('/api/open?app='+key,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
+  var path=b.getAttribute('data-path')||'';
+  var url=key?'/api/open?app='+key:'/api/open?app=custom&path='+encodeURIComponent(path);
+  fetch(url,{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
     .then(function(r){return r.json();})
     .then(function(j){ toast(j.ok?j.msg:('启动失败：'+j.msg)); })
     .catch(function(){ toast('后端未连接，先双击「启动工作台.bat」'); });
 });
+$('btnLcAdd').addEventListener('click',function(){
+  var name=$('lcName').value.trim(), path=$('lcPath').value.trim(), ic=$('lcIc').value.trim()||'🚀';
+  if(!name||!path){ toast('名称和路径都要填'); return; }
+  var arr=lcCustom(); arr.push({name:name,path:path,ic:ic});
+  lcSave(arr); renderLaunch(); lcShow(false);
+  $('lcName').value=''; $('lcPath').value=''; $('lcIc').value='';
+  toast('已添加「'+name+'」');
+});
+$('btnLcCancel').addEventListener('click',function(){ lcShow(false); });
 /* ---------- 马上起飞（本机游戏/程序一键启动） ---------- */
 function checkLp(){
   document.querySelectorAll('.lp-btn[data-app]').forEach(function(b){
