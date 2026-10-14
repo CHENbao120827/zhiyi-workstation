@@ -601,6 +601,7 @@ canvas{width:100%;display:block}
         <label class="bulk-sel"><input type="checkbox" id="selAll"> 全选</label>
         <button id="btnBulkDone" class="tbtn">批量完成</button>
         <button id="btnBulkDel" class="tbtn danger">批量删除</button>
+        <button id="btnClearDone" class="tbtn danger" title="删除所有已完成任务">一键清空已完成</button>
         <span class="bulk-info">按住任务行拖动可自定义顺序</span>
       </div>
       <div id="taskList" class="task-list"></div>
@@ -1868,6 +1869,13 @@ $('btnBulkDel').addEventListener('click',function(){
   if(!confirm('确定删除选中的 '+n+' 个任务吗？'))return;
   S.tasks=S.tasks.filter(function(t){return !selSet[t.id];});
   selSet={}; save(); toast('已删除 '+n+' 个任务');
+});
+$('btnClearDone').addEventListener('click',function(){
+  var n=S.tasks.filter(function(t){return t.done;}).length;
+  if(!n){ toast('没有已完成的任务'); return; }
+  if(!confirm('确定清空 '+n+' 条已完成任务吗？'))return;
+  S.tasks=S.tasks.filter(function(t){return !t.done;});
+  selSet={}; save(); renderTasks(); toast('已清空 '+n+' 条已完成任务');
 });
 
 /* ---------- 仪表盘：今日待办速览 ---------- */
