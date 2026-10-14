@@ -596,7 +596,7 @@ canvas{width:100%;display:block}
     </div>
 
     <div class="card" style="margin-top:14px">
-      <div class="card-title">News Feed <span class="tag" id="newsState">实时</span><button id="btnNewsRefresh" style="margin-left:auto;padding:4px 10px;font-size:11px">刷新全部</button></div>
+      <div class="card-title">News Feed <span class="tag" id="newsState">实时</span><button id="btnNewsShuffle" style="margin-left:auto;padding:4px 10px;font-size:11px">换一批</button><button id="btnNewsRefresh" style="margin-left:6px;padding:4px 10px;font-size:11px">刷新全部</button></div>
       <div class="newstabs" id="newsTabs"></div>
       <div id="newsList" class="newlist"></div>
       <div class="news-note" id="newsStatus">正在建立实时资讯通道…</div>
@@ -1641,6 +1641,15 @@ $('newsTabs').addEventListener('click',function(e){
   var b=e.target.closest('.ntab'); if(!b)return;
   newsCat=b.getAttribute('data-c'); renderNews();
   if(!NEWS[newsCat]||!NEWS[newsCat].items)fetchNews(newsCat,true);
+});
+$('btnNewsShuffle').addEventListener('click',function(){
+  if(newsCat==='live'){ toast('实时要闻不可换批，请用「刷新全部」重抓'); return; }
+  var pool=NEWS_CUR[newsCat]||[];
+  if(!pool.length){ toast('该分类暂无更多内容'); return; }
+  var arr=pool.slice();
+  for(var i=arr.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var _t=arr[i];arr[i]=arr[j];arr[j]=_t;}
+  NEWS[newsCat]={t:Date.now(),items:arr.slice(0,6),live:false};
+  renderNews(); toast('已换一批 · '+newsCat);
 });
 
 /* ---------- 快捷入口 ---------- */
