@@ -2285,6 +2285,9 @@ function timerTick(){
        S.focus.secs[today()]=(S.focus.secs[today()]||0)+Math.round(DUR.work);
        S.focus.log=S.focus.log||[]; S.focus.log.unshift({t:Date.now(),m:Math.round(DUR.work/60)});
        if(S.focus.log.length>30)S.focus.log.length=30;
+       S.cal=S.cal||{events:[],sel:''}; S.cal.events=S.cal.events||[];
+       S.cal.events.push({id:uid(),date:today(),text:'🧘 专注 '+Math.round(DUR.work/60)+' 分钟',ts:Date.now()});
+       if(S.cal.events.length>200)S.cal.events.shift();
       save();
       chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); notify('智己工作站 · 专注完成','休息 '+Math.round(DUR.brk/60)+' 分钟，放松一下'); renderFocusToday();
       tMode='brk';
