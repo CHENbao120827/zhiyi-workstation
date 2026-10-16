@@ -2364,6 +2364,13 @@ function renderFocus(){
   tm.textContent=tMode==='work'?'FOCUS':'BREAK';
   tm.className='timer-mode'+(tMode==='work'?' work':'');
   $('btnTimer').textContent=tRunning?'暂停':'开始';
+  updateTitle();
+}
+var BASE_TITLE=document.title;
+function updateTitle(){
+  if(tRunning){
+    document.title=(tMode==='work'?'⏱ ':'☕ ')+pad(Math.floor(tRemain/60))+':'+pad(tRemain%60)+' '+(tMode==='work'?'专注中':'休息中')+' · 智己工作站';
+  }else if(document.title!==BASE_TITLE){document.title=BASE_TITLE;}
 }
 document.addEventListener('keydown',function(e){
   if(e.code==='Space'){
