@@ -642,6 +642,9 @@ canvas{width:100%;display:block}
         <button data-f="open" class="chip">待办</button>
         <button data-f="done" class="chip">已完成</button>
         <button data-f="overdue" class="chip">已过期</button>
+        <button data-f="pri-high" class="chip">🔥 高</button>
+        <button data-f="pri-mid" class="chip">⚡ 中</button>
+        <button data-f="pri-low" class="chip">🍃 低</button>
       </div>
       <div class="stat-bar"><div class="stat-fill" id="taskStatFill"></div></div>
       <div class="od-note" id="odNote" style="display:none"></div>
@@ -1878,6 +1881,9 @@ function renderTasks(){
     if(taskFilter==='open')return !t.done;
     if(taskFilter==='done')return t.done;
     if(taskFilter==='overdue')return isOd(t);
+    if(taskFilter==='pri-high')return !t.done&&t.pri==='high';
+    if(taskFilter==='pri-mid')return !t.done&&t.pri==='mid';
+    if(taskFilter==='pri-low')return !t.done&&(!t.pri||t.pri==='low');
     return true;
   });
   visibleIds=shown.map(function(t){return t.id;});
