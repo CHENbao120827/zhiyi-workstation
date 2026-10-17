@@ -117,6 +117,9 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .ex-tip b{color:var(--gold);font-weight:600}
 /* 天气 */
 .wx-city{font-size:13.5px;font-weight:600;letter-spacing:2px;color:var(--sub)}
+.wx-city-row{display:flex;align-items:center;gap:8px}
+.wx-city-sel{background:var(--card2);color:var(--sub);border:1px solid var(--line);border-radius:7px;font-size:11px;padding:2px 6px;cursor:pointer;font-family:inherit}
+.wx-city-sel option{background:#0f172a;color:#fff}
 .wx-cond{font-size:36px;font-weight:200;color:#fff;font-variant-numeric:tabular-nums;margin:5px 0 2px;font-family:ui-monospace,Consolas,monospace}
 .wx-cond b{font-weight:500;color:var(--sky);font-size:22px}
 .wx-temp{font-size:12.5px;color:var(--sub)}
@@ -540,7 +543,7 @@ canvas{width:100%;display:block}
       </div>
       <div class="card">
         <div class="card-title">Weather <span class="tag" id="wxState">实时</span><button id="btnWxRefresh" style="margin-left:auto;padding:3px 9px;font-size:11px">刷新</button></div>
-        <div class="wx-city" id="wxCity">西安</div>
+        <div class="wx-city-row"><span class="wx-city" id="wxCity">西安</span><select id="wxCitySel" class="wx-city-sel" title="切换城市"></select></div>
         <div class="wx-cond" id="wxCond">--</div>
         <div class="wx-temp" id="wxTemp"></div>
         <div class="wx-meta" id="wxMeta"></div>
@@ -2983,6 +2986,29 @@ function renderAstro(){
   }
 }
 /* ---------- 启动 ---------- */
+var WX_CITIES=[
+ {n:'西安',lat:34.3416,lon:108.9398},
+ {n:'北京',lat:39.9042,lon:116.4074},
+ {n:'上海',lat:31.2304,lon:121.4737},
+ {n:'广州',lat:23.1291,lon:113.2644},
+ {n:'深圳',lat:22.5431,lon:114.0579},
+ {n:'成都',lat:30.5728,lon:104.0668},
+ {n:'杭州',lat:30.2741,lon:120.1551},
+ {n:'重庆',lat:29.5630,lon:106.5516},
+ {n:'定位…',lat:0,lon:0}
+];
+(function(){
+  var sel=document.getElementById('wxCitySel'); if(!sel)return;
+  WX_CITIES.forEach(function(c,i){var o=document.createElement('option');o.value=i;o.textContent=c.n;sel.appendChild(o);});
+  sel.addEventListener('change',function(){
+    var c=WX_CITIES[+sel.value];
+    if(c.lat===0){ try{localStorage.removeItem('garden.geo.v1');}catch(e){} initGeo(); toast('重新定位当前位置'); return; }
+    GEO.lat=c.lat;GEO.lon=c.lon;GEO.city=c.n;GEO.t=Date.now();
+    try{localStorage.setItem('garden.geo.v1',JSON.stringify(GEO));}catch(e){}
+    refreshWeather();
+    toast('已切换到 '+c.n);
+  });
+})();
 function renderAll(){
   renderWeather(); renderNews(); renderLinks(); renderCal(); renderAstro();
   renderDaily(); renderOverview();
