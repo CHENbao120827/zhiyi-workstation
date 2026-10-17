@@ -322,6 +322,9 @@ select{min-width:120px}
 .mini-item{cursor:pointer}
 .mini-item.overdue{border-left:2px solid var(--bad)}
 .mini-item.overdue .t{color:#fda4a4}
+.mini-item.hot{border-left:2px solid #f59e0b}
+.mini-item.hot .t{color:#fcd34d}
+.mini-hot{background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.30);color:#fcd34d;font-size:12px;padding:6px 10px;border-radius:8px;margin-bottom:8px;letter-spacing:.5px}
 .empty{color:var(--dim);font-size:12.5px;padding:10px 2px}
 .habit-block{margin-bottom:18px}
 .habit-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
@@ -2033,12 +2036,14 @@ function renderMiniTodo(){
   var el=$('miniTodo'); if(!el)return;
   var warn=S.tasks.filter(function(t){return !t.done&&isOd(t);}).length;
   var warnHtml=warn?'<div class="mini-warn">⚠ '+warn+' 个待办已过期</div>':'';
+  var hot=S.tasks.filter(function(t){return !t.done&&t.pri==='high';}).length;
+  var hotHtml=hot?'<div class="mini-hot">🔥 '+hot+' 个高优先级待办</div>':'';
   var open=S.tasks.filter(function(t){return !t.done;});
   var top=open.slice(0,5);
-  if(!top.length){ el.innerHTML=warnHtml||'<div class="empty">今日无待办，清清爽爽</div>'; return; }
-  el.innerHTML=warnHtml+top.map(function(t){
+  if(!top.length){ el.innerHTML=(warnHtml+hotHtml)||'<div class="empty">今日无待办，清清爽爽</div>'; return; }
+  el.innerHTML=warnHtml+hotHtml+top.map(function(t){
     var od=isOd(t);
-    return '<div class="mini-item'+(od?' overdue':'')+'" data-id="'+t.id+'">'
+    return '<div class="mini-item'+(od?' overdue':'')+(t.pri==='high'&&!od?' hot':'')+'" data-id="'+t.id+'">'
       +'<span class="t">'+esc(t.text)+'</span>'
       +(od?'<span class="s" style="color:var(--bad)">过期 '+daysPast(t.due)+' 天</span>':'<span class="s">'+priName(t.pri)+'优先级</span>')
       +'</div>';
