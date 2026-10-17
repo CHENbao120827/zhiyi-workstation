@@ -2429,7 +2429,7 @@ function timerTick(){
        S.cal.events.push({id:uid(),date:today(),text:'🧘 专注 '+Math.round(DUR.work/60)+' 分钟',ts:Date.now()});
        if(S.cal.events.length>200)S.cal.events.shift();
       save();
-      chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); notify('智己工作站 · 专注完成','休息 '+Math.round(DUR.brk/60)+' 分钟，放松一下'); renderFocusToday();
+      chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); notify('智己工作站 · 专注完成','休息 '+Math.round(DUR.brk/60)+' 分钟，放松一下'); noiseStop(true); renderFocusToday();
       tMode='brk';
     }else{
       chime(); toast('休息结束，开始新一轮专注'); notify('智己工作站 · 休息结束','开始新一轮专注吧');
@@ -2493,9 +2493,21 @@ if(_am){_am.addEventListener('click',function(){
 });}
 /* 白噪音 · 四种音效 */
 var _noise=null,_noiseType=null;
-function noiseStop(){
-  if(_noise){try{_noise.src.stop();_noise.ctx.close();}catch(e){}_noise=null;_noiseType=null;}
+function noiseStop(fade){
+  if(!_noise)return;
+  var n=_noise;_noise=null;_noiseType=null;
   document.querySelectorAll('.noise').forEach(function(b){b.classList.remove('active');});
+  if(fade&&n.gain){
+    try{
+      var now=n.ctx.currentTime;
+      n.gain.gain.cancelScheduledValues(now);
+      n.gain.gain.setValueAtTime(Math.max(0.0001,n.gain.gain.value),now);
+      n.gain.gain.linearRampToValueAtTime(0.0001,now+1.6);
+      setTimeout(function(){try{n.src.stop();n.ctx.close();}catch(e){}},1750);
+      return;
+    }catch(e){}
+  }
+  try{n.src.stop();n.ctx.close();}catch(e){}
 }
 function noiseStart(type,btn){
   try{
@@ -2518,7 +2530,7 @@ function noiseStart(type,btn){
     else if(type==='cafe'){var f3=ctx.createBiquadFilter();f3.type='bandpass';f3.frequency.value=900;f3.Q.value=.5;g.connect(f3);f3.connect(ctx.destination);}
     else{g.connect(ctx.destination);}
     src.start();
-    _noise={src:src,ctx:ctx};_noiseType=type;
+    _noise={src:src,ctx:ctx,gain:g};_noiseType=type;
     document.querySelectorAll('.noise').forEach(function(b){b.classList.toggle('active',b===btn);});
   }catch(e){toast('音效不可用（浏览器限制）');}
 }
