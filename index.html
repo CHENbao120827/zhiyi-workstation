@@ -1872,7 +1872,7 @@ function daysPast(due){ return Math.max(0,Math.floor((Date.now()-new Date(due+'T
 function isOd(t){ return !t.done&&!!t.due&&t.due<today(); }
 function renderTasks(){
   var list=S.tasks.slice().sort(function(a,b){
-    return (a.done?1:0)-(b.done?1:0)||((a.order!=null?Number(a.order):a.created)-(b.order!=null?Number(b.order):b.created));
+    return (a.done?1:0)-(b.done?1:0)||priRank(a.pri)-priRank(b.pri)||((a.order!=null?Number(a.order):a.created)-(b.order!=null?Number(b.order):b.created));
   });
   var shown=list.filter(function(t){
     if(taskFilter==='open')return !t.done;
