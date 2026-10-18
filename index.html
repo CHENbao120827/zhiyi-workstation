@@ -188,6 +188,11 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .ov-item .ov-v{font-size:20px;font-weight:700;color:#38bdf8;margin-top:3px}
 .ov-item .ov-v small{font-size:11px;font-weight:400;color:var(--dim)}
 .ov-item.ov-done .ov-v{color:#52c41a}
+.due-quick{display:flex;align-items:center;gap:6px;margin:7px 0 3px;flex-wrap:wrap}
+.due-quick .dq-label{font-size:11px;color:var(--dim)}
+.due-quick button{background:var(--card2);border:1px solid var(--line);color:var(--sub);font-size:11px;padding:3px 11px;border-radius:7px;cursor:pointer;font-family:inherit;transition:.15s}
+.due-quick button:hover{border-color:rgba(120,150,255,.45);color:var(--txt);background:rgba(77,124,255,.12)}
+.due-quick .dq-clear{opacity:.7}
 .mini-warn{background:rgba(234,102,104,.10);border:1px solid rgba(234,102,104,.30);color:#ff8b8b;font-size:12px;padding:6px 10px;border-radius:8px;margin-bottom:8px;letter-spacing:.5px}
 .launch-hint{font-size:10.5px;color:var(--dim);margin-top:10px;letter-spacing:.5px}
 .launch-add-row{display:none;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center}
@@ -642,6 +647,9 @@ canvas{width:100%;display:block}
           <option value="low">低优先级</option>
         </select>
         <button id="btnAddTask" class="primary">添加</button>
+      </div>
+      <div class="due-quick" id="dueQuick">
+        <span class="dq-label">快捷截止：</span><button data-d="0">今天</button><button data-d="1">明天</button><button data-d="3">3天后</button><button data-d="7">下周</button><button data-d="clear" class="dq-clear">清除</button>
       </div>
       <div class="filters" id="taskFilters">
         <button data-f="all" class="chip active">全部</button>
@@ -1937,6 +1945,12 @@ function toggleTask(id){
 function delTask(id){ S.tasks=S.tasks.filter(function(x){return x.id!==id;}); save(); }
 $('btnAddTask').addEventListener('click',addTask);
 $('taskInput').addEventListener('keydown',function(e){if(e.key==='Enter')addTask();});
+$('dueQuick').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  if(b.dataset.d==='clear'){ $('taskDue').value=''; return; }
+  var d=new Date(); d.setDate(d.getDate()+ +b.dataset.d);
+  $('taskDue').value=fmt(d);
+});
 $('taskFilters').addEventListener('click',function(e){
   var b=e.target.closest('.chip'); if(!b)return;
   document.querySelectorAll('#taskFilters .chip').forEach(function(x){x.classList.remove('active');});
