@@ -2576,6 +2576,14 @@ $('btnTimerReset').addEventListener('click',function(){
   var fc=document.querySelector('.focus-card'); if(fc){fc.classList.remove('running');fc.classList.remove('flash');}
   tMode='work'; tRemain=DUR.work; renderFocus();
 });
+document.addEventListener('keydown',function(e){
+  if(e.code!=='Space')return;
+  var tag=(document.activeElement&&document.activeElement.tagName)||'';
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+  if(typeof cur==='undefined'||cur!=='focus')return;
+  e.preventDefault();
+  var b=$('btnTimer'); if(b)b.click();
+});
 
 /* ---------- 数据 ---------- */
 function drawLine(){
