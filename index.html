@@ -647,7 +647,7 @@ canvas{width:100%;display:block}
     <h2>待办清单</h2>
     <div class="card">
       <div class="add-row">
-        <input id="taskInput" type="text" placeholder="要做什么？输入后按回车添加">
+        <input id="taskInput" type="text" placeholder="要做什么？回车添加，可用 !高 明天 内联设置">
         <input id="taskDue" type="date" title="截止日期（可选，过期自动提醒）">
         <select id="taskPri">
           <option value="high">高优先级</option>
@@ -1940,9 +1940,26 @@ function renderTasks(){
   var sa=$('selAll');
   if(sa)sa.checked=Object.keys(selSet).length>0&&visibleIds.every(function(id){return selSet[id];});
 }
+function parseTaskInput(raw){
+  var text=raw, pri=null, due=null;
+  var pm=text.match(/!(高|h|high|中|m|mid|低|l|low)/i);
+  if(pm){ var k=pm[1].toLowerCase();
+    pri=(k==='高'||k==='h'||k==='high')?'high':(k==='低'||k==='l'||k==='low')?'low':'mid';
+    text=text.replace(pm[0],' '); }
+  var days=null;
+  if(/今天/.test(text)){days=0;text=text.replace(/今天/g,' ');}
+  else if(/明天/.test(text)){days=1;text=text.replace(/明天/g,' ');}
+  else if(/后天/.test(text)){days=2;text=text.replace(/后天/g,' ');}
+  else if(/下周/.test(text)){days=7;text=text.replace(/下周/g,' ');}
+  else { var dm=text.match(/(\d+)天后/); if(dm){days=parseInt(dm[1],10);text=text.replace(dm[0],' ');} }
+  if(days!==null){ due=fmt(new Date(Date.now()+days*86400000)); }
+  text=text.replace(/\s+/g,' ').trim();
+  return {text:text,pri:pri,due:due};
+}
 function addTask(){
   var v=$('taskInput').value.trim(); if(!v)return;
-  S.tasks.unshift({id:uid(),text:v,pri:$('taskPri').value,due:$('taskDue').value||null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
+  var p=parseTaskInput(v);
+  S.tasks.unshift({id:uid(),text:p.text,pri:p.pri||$('taskPri').value,due:p.due||$('taskDue').value||null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
   $('taskInput').value=''; $('taskDue').value=''; save();
 }
 function toggleTask(id){
@@ -2077,7 +2094,8 @@ function renderMiniTodo(){
 }
 function miniAddTask(){
   var v=$('miniTaskInput').value.trim(); if(!v)return;
-  S.tasks.unshift({id:uid(),text:v,pri:'mid',due:null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
+  var p=parseTaskInput(v);
+  S.tasks.unshift({id:uid(),text:p.text,pri:p.pri||'mid',due:p.due||null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
   $('miniTaskInput').value=''; save(); renderAll(); if(typeof toast==='function')toast('已加入待办');
 }
 $('miniTaskInput').addEventListener('keydown',function(e){if(e.key==='Enter')miniAddTask();});
