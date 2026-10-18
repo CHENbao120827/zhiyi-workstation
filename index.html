@@ -328,6 +328,10 @@ select{min-width:120px}
 .task-due{font-size:10.5px;padding:1px 8px;border-radius:20px;color:var(--dim);flex:none;font-family:ui-monospace,Consolas,monospace}
 .task-due.od{color:#fca5a5;background:rgba(244,112,112,.10);border:1px solid rgba(244,112,112,.25)}
 .mini-item{cursor:pointer}
+.mini-quick{display:flex;gap:8px;margin:2px 0 10px}
+.mini-quick input{flex:1;min-width:0;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:7px 11px;font-size:13px;font-family:inherit;outline:none;transition:.15s}
+.mini-quick input:focus{border-color:rgba(77,124,255,.5);box-shadow:0 0 0 3px rgba(77,124,255,.12)}
+.mini-quick button{flex:none;padding:7px 13px;border-radius:9px}
 .mini-item.overdue{border-left:2px solid var(--bad)}
 .mini-item.overdue .t{color:#fda4a4}
 .mini-item.hot{border-left:2px solid #f59e0b}
@@ -616,6 +620,7 @@ canvas{width:100%;display:block}
       </div>
       <div class="card">
         <div class="card-title">Today Tasks <span class="tag">待办速览</span></div>
+        <div class="mini-quick"><input id="miniTaskInput" type="text" placeholder="快速记下一件事，回车添加…"><button id="btnMiniTask" class="primary">＋</button></div>
         <div id="miniTodo" class="mini-list"></div>
       </div>
       <div class="card">
@@ -2070,6 +2075,13 @@ function renderMiniTodo(){
       +'</div>';
   }).join('')+(open.length>5?'<div class="empty" style="padding-top:6px">还有 '+(open.length-5)+' 项待办，点此查看全部 →</div>':'');
 }
+function miniAddTask(){
+  var v=$('miniTaskInput').value.trim(); if(!v)return;
+  S.tasks.unshift({id:uid(),text:v,pri:'mid',due:null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
+  $('miniTaskInput').value=''; save(); renderAll(); if(typeof toast==='function')toast('已加入待办');
+}
+$('miniTaskInput').addEventListener('keydown',function(e){if(e.key==='Enter')miniAddTask();});
+$('btnMiniTask').addEventListener('click',miniAddTask);
 $('miniTodo').addEventListener('click',function(){
   var n=document.querySelector('.navb[data-view="todo"]'); if(n)n.click();
 });
