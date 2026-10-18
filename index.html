@@ -374,6 +374,9 @@ select{min-width:120px}
 .goal-btn{cursor:pointer;font-size:12px;padding:5px 12px;border-radius:8px;color:var(--sub)}
 .goal-btn:hover{color:var(--ok)}
 .tag-row{display:flex;gap:8px;margin:10px 0 6px;flex-wrap:wrap}
+.note-search{width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:8px 12px;font-size:13px;margin:4px 0 6px;font-family:inherit;outline:none;transition:.15s}
+.note-search:focus{border-color:rgba(77,124,255,.5);box-shadow:0 0 0 3px rgba(77,124,255,.12)}
+.note-search::placeholder{color:var(--dim)}
 .tag-chip{background:rgba(77,124,255,.06);border:1px solid rgba(77,124,255,.28);color:#8fb3ff;font-size:12px;padding:4px 12px;border-radius:20px;cursor:pointer;transition:.2s;font-family:inherit}
 .tag-chip:hover{border-color:rgba(77,124,255,.6);color:#c7dcff}
 .tag-chip.on{background:rgba(56,189,248,.16);border-color:#38bdf8;color:#7dd3fc;box-shadow:0 0 12px rgba(56,189,248,.25)}
@@ -724,6 +727,7 @@ canvas{width:100%;display:block}
       </div>
       <div class="add-row"><button id="btnAddNote" class="primary">保存灵感</button><button id="btnPickNote" class="primary" style="flex:none;letter-spacing:1px">🎲 随机拾取</button></div>
       <div id="pickBox" class="pick-box" style="display:none"></div>
+      <input id="noteSearch" class="note-search" type="text" placeholder="🔍 搜索灵感关键词…">
       <div id="noteList"></div>
     </div>
   </section>
@@ -2217,7 +2221,8 @@ function renderNotes(){
   }).join('');
   if(!S.notes.length){ el.innerHTML='<div class="tag-row">'+chips+'</div><div class="empty">灵感稍纵即逝，想到就记下来</div>'; return; }
   var sorted=S.notes.slice().sort(function(a,b){return (b.pin?1:0)-(a.pin?1:0)||b.ts-a.ts;});
-  var shown=sorted.filter(function(n){return flt==='all'||(n.tag||'idea')===flt;});
+  var kw=(S&&S.noteKw||'').trim().toLowerCase();
+  var shown=sorted.filter(function(n){return (flt==='all'||(n.tag||'idea')===flt)&&(!kw||(n.text||'').toLowerCase().indexOf(kw)>=0);});
   if(!shown.length){ el.innerHTML='<div class="tag-row">'+chips+'</div><div class="empty">这个分类还没有内容</div>'; return; }
   el.innerHTML='<div class="tag-row">'+chips+'</div>'+shown.map(function(n){
     var d=new Date(n.ts);
@@ -2264,6 +2269,7 @@ function pickNote(){
 $('btnPickNote').addEventListener('click',pickNote);
 $('pickBox').addEventListener('click',function(){ if(!S.notes||!S.notes.length){ this.style.display='none'; } else { pickNote(); } });
 $('btnAddNote').addEventListener('click',addNote);
+$('noteSearch').addEventListener('input',function(e){ S.noteKw=e.target.value; renderNotes(); });
 $('noteInput').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))addNote(); });
 $('noteList').addEventListener('click',function(e){
   var f=e.target.closest('[data-f]'); if(f){ setNoteFilter(f.getAttribute('data-f')); return; }
