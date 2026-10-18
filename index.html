@@ -188,6 +188,10 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .ov-item .ov-v{font-size:20px;font-weight:700;color:#38bdf8;margin-top:3px}
 .ov-item .ov-v small{font-size:11px;font-weight:400;color:var(--dim)}
 .ov-item.ov-done .ov-v{color:#52c41a}
+.ov-score{grid-column:1/-1;display:flex;align-items:center;gap:11px;background:linear-gradient(135deg,rgba(37,99,235,.10),rgba(56,189,248,.04));border:1px solid var(--line);border-radius:10px;padding:9px 13px}
+.ov-score .os-badge{flex:none;width:38px;height:38px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.ov-score .os-txt{font-size:13px;color:var(--txt)}
+.ov-score .os-txt small{display:block;font-size:11px;color:var(--sub);margin-top:2px}
 .due-quick{display:flex;align-items:center;gap:6px;margin:7px 0 3px;flex-wrap:wrap}
 .due-quick .dq-label{font-size:11px;color:var(--dim)}
 .due-quick button{background:var(--card2);border:1px solid var(--line);color:var(--sub);font-size:11px;padding:3px 11px;border-radius:7px;cursor:pointer;font-family:inherit;transition:.15s}
@@ -2074,6 +2078,12 @@ function renderOverview(){
     +'<div class="ov-item'+(total&&done===total?' ov-done':'')+'"><div class="ov-k">待办进度</div><div class="ov-v">'+done+'<small> / '+total+'</small></div></div>'
     +'<div class="ov-item'+(S.habits.length&&hDone===S.habits.length?' ov-done':'')+'"><div class="ov-k">习惯打卡</div><div class="ov-v">'+hDone+'<small> / '+S.habits.length+' 项</small></div></div>'
     +'<div class="ov-item"><div class="ov-k">目标达成</div><div class="ov-v">'+gDone+'<small> / '+S.goals.length+'</small></div></div>';
+  var fSc=Math.min(fm/120,1)*40;
+  var tSc=total?done/total*30:15;
+  var hSc=S.habits.length?hDone/S.habits.length*30:15;
+  var sc=Math.round(fSc+tSc+hSc);
+  var lvl=sc>=80?['爆发状态','#52c41a']:sc>=60?['稳步推进','#38bdf8']:sc>=40?['渐入佳境','#fbbf24']:['蓄力中','#94a3b8'];
+  el.innerHTML+='<div class="ov-score"><span class="os-badge" style="color:'+lvl[1]+';border-color:'+lvl[1]+'55">'+sc+'</span><span class="os-txt">今日效率速评 · <b style="color:'+lvl[1]+'">'+lvl[0]+'</b><small>专注 '+fm+' 分 / 完成 '+done+'/'+total+' / 习惯 '+hDone+' 项</small></span></div>';
 }
 function renderMiniTodo(){
   var el=$('miniTodo'); if(!el)return;
