@@ -270,6 +270,7 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .nitem:hover{background:rgba(77,124,255,.06)}
 .nitem a{flex:1;color:var(--txt);text-decoration:none;font-size:13.5px;line-height:1.65;word-break:break-all}
 .nitem a:hover{color:var(--sky)}
+.nitem a mark{background:rgba(56,189,248,.22);color:#7dd3fc;padding:0 3px;border-radius:3px}
 .nitem .nsrc{font-size:10.5px;color:var(--gold);flex:none;padding:1px 8px;border-radius:20px;background:rgba(245,193,94,.09);border:1px solid rgba(245,193,94,.22)}
 .nitem .ndate{font-size:10.5px;color:var(--dim);flex:none;font-family:ui-monospace,Consolas,monospace}
 .news-note{font-size:11px;color:var(--dim);margin-top:12px;border-top:1px dashed var(--line);padding-top:10px;letter-spacing:1px}
@@ -1717,6 +1718,15 @@ function fetchNews(cat,force){
 }
 function fetchNewsAll(){ Object.keys(NEWS_KEYS).forEach(function(c){fetchNews(c,true);}); }
 setInterval(function(){ if(document.visibilityState!=='hidden')fetchNews(newsCat,true); }, 30*60*1000);
+function newsHL(t){
+  var s=esc(t);
+  var kws=['三角洲行动','我的世界','Minecraft','武器装备','人工智能','军事','军情','科技'];
+  kws.forEach(function(k){
+    var ke=k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    s=s.replace(new RegExp('('+ke+')','g'),'<mark>$1</mark>');
+  });
+  return s;
+}
 function renderNews(){
   $('newsTabs').innerHTML=NTABS.map(function(x){
     return '<button class="ntab'+(newsCat===x[0]?' active':'')+'" data-c="'+x[0]+'"><span class="dot" style="background:'+x[2]+'"></span>'+x[1]+'</button>';
@@ -1726,7 +1736,7 @@ function renderNews(){
   var live=!!(src&&src.live&&src.items&&src.items.length);
   $('newsList').innerHTML=items.map(function(n){
     var _sn=(live&&newsCat==='live')?'新浪要闻':(n.s||'');
-    return '<div class="nitem"><a href="'+esc(n.u)+'" target="_blank" rel="noopener">'+esc(n.t)+'</a><span class="nsrc">'+esc(_sn)+'</span><span class="ndate">'+esc(n.d)+'</span></div>';
+    return '<div class="nitem"><a href="'+esc(n.u)+'" target="_blank" rel="noopener">'+newsHL(n.t)+'</a><span class="nsrc">'+esc(_sn)+'</span><span class="ndate">'+esc(n.d)+'</span></div>';
   }).join('')||'<div class="empty">暂无资讯，点击右上角「刷新全部」</div>';
   var st=$('newsState');
   if(st){
