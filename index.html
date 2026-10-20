@@ -1931,7 +1931,11 @@ function renderTasks(){
   }else{
     el.innerHTML=shown.map(function(t){
       var od=isOd(t);
-      var dueTxt=od?('已过期 '+daysPast(t.due)+' 天'):(t.due?'截止 '+t.due:'');
+      var dueTxt;
+      if(od) dueTxt='已过期 '+daysPast(t.due)+' 天';
+      else if(!t.due) dueTxt='';
+      else { var _dd=Math.round((new Date(t.due)-new Date(today()))/86400000);
+        dueTxt=_dd===0?'今天截止':_dd===1?'明天截止':_dd===2?'后天截止':_dd+' 天后截止'; }
       return '<div class="task-item'+(t.done?' done':'')+(od?' overdue':'')+((selSet[t.id])?' selon':'')+'" data-id="'+t.id+'"'+(t.done?'':' draggable="true"')+'>'
         +'<input type="checkbox" class="sel" data-act="sel"'+(selSet[t.id]?' checked':'')+'>'
         +'<span class="ck'+(t.done?' on':'')+'" data-act="toggle"></span>'
