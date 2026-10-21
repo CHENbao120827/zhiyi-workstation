@@ -422,6 +422,13 @@ select{min-width:120px}
 .week-goal{font-size:12px;color:var(--sub);margin:2px 0 10px;letter-spacing:.3px;text-align:left}
 .wg-bar{height:6px;border-radius:4px;background:rgba(255,255,255,.07);margin:6px 0 4px;overflow:hidden}
 .wg-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#2563eb,#38bdf8);box-shadow:0 0 10px rgba(56,189,248,.5);transition:width .6s}
+.wg-wrap{display:flex;align-items:center;gap:14px}
+.wg-ring{flex:none}
+.wg-ring circle{fill:none;stroke-width:4}
+.wg-ring .wg-rbg{stroke:rgba(255,255,255,.08)}
+.wg-ring .wg-rfg{stroke-linecap:round;transition:stroke-dashoffset .6s}
+.wg-ring .wg-rt{fill:var(--txt);font-size:11px;font-weight:700}
+.wg-info{flex:1;min-width:0}
 .wg-set{font-size:11px;color:var(--dim)}
 .focus-vs{display:flex;gap:12px;align-items:stretch;flex-wrap:wrap}
 .fv-item{flex:1;min-width:96px;text-align:center;padding:10px 6px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid var(--line)}
@@ -2374,9 +2381,17 @@ function renderWeekGoal(){
   var cur=Math.round(secs/60);
   var pct=Math.min(100,Math.round(cur/goal*100));
   var over=cur>goal?'<b style="color:#52c41a"> · 超额 '+Math.round(cur-goal)+' 分钟</b>':'';
-  el.innerHTML='本周专注 <b style="color:#38bdf8">'+cur+'</b> / '+goal+' 分钟 · '+pct+'%'+over
+  var C=2*Math.PI*18;
+  var ringCol=over?'#52c41a':'#38bdf8';
+  var off=C*(1-Math.min(1,pct/100));
+  var ring='<svg class="wg-ring" width="46" height="46" viewBox="0 0 46 46">'
+    +'<circle cx="23" cy="23" r="18" class="wg-rbg"/>'
+    +'<circle cx="23" cy="23" r="18" class="wg-rfg" transform="rotate(-90 23 23)" stroke="'+ringCol+'" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/>'
+    +'<text x="23" y="27" text-anchor="middle" class="wg-rt">'+pct+'%</text></svg>';
+  el.innerHTML='<div class="wg-wrap">'+ring
+    +'<div class="wg-info">本周专注 <b style="color:#38bdf8">'+cur+'</b> / '+goal+' 分钟'+over
     +'<div class="wg-bar"><i style="width:'+pct+'%"></i></div>'
-    +'<div class="wg-set">周目标 <input id="wgSet" type="number" min="30" max="5000" step="10" value="'+goal+'"> 分钟</div>';
+    +'<div class="wg-set">周目标 <input id="wgSet" type="number" min="30" max="5000" step="10" value="'+goal+'"> 分钟</div></div></div>';
   var inp=$('wgSet');
   if(inp)inp.addEventListener('change',function(){
     var v=Math.max(30,Math.min(5000,parseInt(inp.value,10)||300));
