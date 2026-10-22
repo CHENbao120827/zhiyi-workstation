@@ -184,6 +184,8 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .launch-btn .ic{font-size:19px;line-height:1}
 .overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
 .ov-item{background:linear-gradient(135deg,rgba(37,99,235,.10),rgba(56,189,248,.05));border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ov-item[data-view]{transition:.15s}
+.ov-item[data-view]:hover{border-color:rgba(56,189,248,.45);transform:translateY(-1px)}
 .ov-item .ov-k{font-size:11px;color:var(--sub);letter-spacing:.5px}
 .ov-item .ov-v{font-size:20px;font-weight:700;color:#38bdf8;margin-top:3px}
 .ov-item .ov-v small{font-size:11px;font-weight:400;color:var(--dim)}
@@ -2095,16 +2097,21 @@ function renderOverview(){
   var hDone=S.habits.filter(function(h){var log=S.habitLog[h.id]||[];return log.indexOf(todayStr)>-1;}).length;
   var gDone=S.goals.filter(function(g){return g.done;}).length;
   el.innerHTML=
-    '<div class="ov-item"><div class="ov-k">今日专注</div><div class="ov-v">'+fc+'<small> 次 · '+fm+' 分</small></div></div>'
-    +'<div class="ov-item'+(total&&done===total?' ov-done':'')+'"><div class="ov-k">待办进度</div><div class="ov-v">'+done+'<small> / '+total+'</small></div></div>'
-    +'<div class="ov-item'+(S.habits.length&&hDone===S.habits.length?' ov-done':'')+'"><div class="ov-k">习惯打卡</div><div class="ov-v">'+hDone+'<small> / '+S.habits.length+' 项</small></div></div>'
-    +'<div class="ov-item"><div class="ov-k">目标达成</div><div class="ov-v">'+gDone+'<small> / '+S.goals.length+'</small></div></div>';
+    '<div class="ov-item" data-view="focus" title="点此前往专注"><div class="ov-k">今日专注</div><div class="ov-v">'+fc+'<small> 次 · '+fm+' 分</small></div></div>'
+    +'<div class="ov-item'+(total&&done===total?' ov-done':'')+'" data-view="todo" title="点此前往待办"><div class="ov-k">待办进度</div><div class="ov-v">'+done+'<small> / '+total+'</small></div></div>'
+    +'<div class="ov-item'+(S.habits.length&&hDone===S.habits.length?' ov-done':'')+'" data-view="habits" title="点此前往习惯"><div class="ov-k">习惯打卡</div><div class="ov-v">'+hDone+'<small> / '+S.habits.length+' 项</small></div></div>'
+    +'<div class="ov-item" data-view="goals" title="点此前往目标"><div class="ov-k">目标达成</div><div class="ov-v">'+gDone+'<small> / '+S.goals.length+'</small></div></div>';
   var fSc=Math.min(fm/120,1)*40;
   var tSc=total?done/total*30:15;
   var hSc=S.habits.length?hDone/S.habits.length*30:15;
   var sc=Math.round(fSc+tSc+hSc);
   var lvl=sc>=80?['爆发状态','#52c41a']:sc>=60?['稳步推进','#38bdf8']:sc>=40?['渐入佳境','#fbbf24']:['蓄力中','#94a3b8'];
   el.innerHTML+='<div class="ov-score"><span class="os-badge" style="color:'+lvl[1]+';border-color:'+lvl[1]+'55">'+sc+'</span><span class="os-txt">今日效率速评 · <b style="color:'+lvl[1]+'">'+lvl[0]+'</b><small>专注 '+fm+' 分 / 完成 '+done+'/'+total+' / 习惯 '+hDone+' 项</small></span></div>';
+
+  el.querySelectorAll('.ov-item[data-view]').forEach(function(it){
+    it.style.cursor='pointer';
+    it.onclick=function(){ var b=document.querySelector('.navb[data-view="'+it.getAttribute('data-view')+'"]'); if(b)b.click(); };
+  });
 }
 function renderMiniTodo(){
   var el=$('miniTodo'); if(!el)return;
