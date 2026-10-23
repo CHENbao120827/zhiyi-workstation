@@ -963,6 +963,12 @@ function cmdBuild(q){
     return {ic:'📰',t:'新闻：'+x[1],k:x[0],f:function(){var b=document.querySelector('.ntab[data-c="'+x[0]+'"]');if(b)b.click();}};
   });
   groups.push({g:'新闻',a:nws});
+  var acts=[];
+  acts.push({ic:'✏️',t:'新建待办',k:'new todo add',f:function(){var b=document.querySelector('.navb[data-view="todo"]');if(b)b.click();setTimeout(function(){var i=$('taskInput');if(i)i.focus();},60);}});
+  acts.push({ic:'🧹',t:'清空已完成待办',k:'clear done',f:function(){var b=$('btnClearDone');if(b)b.click();}});
+  acts.push({ic:'🌤️',t:'刷新天气',k:'weather refresh',f:function(){refreshWeather();toast('正在刷新天气…');}});
+  acts.push({ic:'🔄',t:'刷新当前新闻',k:'news refresh',f:function(){fetchNews(newsCat,true);toast('正在刷新新闻…');}});
+  groups.push({g:'快捷操作',a:acts});
   if(q){
     var hits=[];
     try{
