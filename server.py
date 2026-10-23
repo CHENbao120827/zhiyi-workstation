@@ -165,6 +165,23 @@ def net_stats():
     except Exception:
         return []
 
+_netlat_cache = {'t': 0, 'v': None}
+def net_lat():
+    """外网延迟（ping 阿里公共 DNS，30s 缓存，避免拖慢 2s 轮询）"""
+    now = time.time()
+    if now - _netlat_cache['t'] < 30 and _netlat_cache['v'] is not None:
+        return _netlat_cache['v']
+    v = -1
+    try:
+        out = ps("$r=Test-Connection -ComputerName 223.5.5.5 -Count 2 -ErrorAction SilentlyContinue | "
+                 "Select-Object -ExpandProperty ResponseTime; if($r){ [math]::Round(($r | Measure-Object -Average).Average) } else { -1 }")
+        v = int(float(out.strip() or -1))
+    except Exception:
+        v = -1
+    _netlat_cache['t'] = now
+    _netlat_cache['v'] = v
+    return v
+
 # ---------- 应用启动（白名单，防注入） ----------
 EDGE = r'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 if not os.path.exists(EDGE):
@@ -457,6 +474,12 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(401, {'ok': False, 'msg': 'token 无效'})
                     return
                 self._json(200, {'ok': True, 'list': net_stats()})
+                return
+            if route == '/api/netlat':
+                if not check_token(self.headers):
+                    self._json(401, {'ok': False, 'msg': 'token 无效'})
+                    return
+                self._json(200, {'ok': True, 'ms': net_lat()})
                 return
             if route == '/api/version':
                 try:

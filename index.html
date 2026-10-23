@@ -1363,7 +1363,7 @@ function renderWeather(){
 }
 
 /* ---------- 系统监测（本地后端 /api/sys） ---------- */
-var SYS={on:false,hist:[]};
+var SYS={on:false,hist:[],lat:'--'};
 function sysCls(p){ return p>=85?' hot':(p>=60?' warn':''); }
 function drawSpark(){
   var c=$('spark'); if(!c)return;
@@ -1408,7 +1408,7 @@ function renderSys(d){
     +diskHtml
     +'</div>'
     +'<canvas id="spark" class="sys-spark"></canvas>'
-    +'<div class="sys-meta"><span>内存 <b>'+memTxt+'</b></span><span>运行 <b>'+esc(d.up.text)+'</b></span><span>进程 <b>'+d.procs+'</b></span><span>IP <b>'+esc((d.ip[0]||'—'))+'</b></span></div>'
+    +'<div class="sys-meta"><span>内存 <b>'+memTxt+'</b></span><span>运行 <b>'+esc(d.up.text)+'</b></span><span>进程 <b>'+d.procs+'</b></span><span>延迟 <b>'+SYS.lat+'</b></span><span>IP <b>'+esc((d.ip[0]||'—'))+'</b></span></div>'
     +'<div class="net-row" id="netRow"><span class="net-d">↓ --</span><span class="net-u">↑ --</span><span class="net-if">测速中</span></div>'
     +'<div class="proc-title">进程占用 Top<span style="color:var(--dim);font-weight:400">内存排序</span></div>'
     +'<div id="procBox"></div>';
@@ -1474,6 +1474,13 @@ function pollSys(){
     .catch(function(){ SYS.on=false; SYS.hist=[]; renderSys(null); });
 }
 setInterval(pollSys,2000);
+function pollLat(){
+  fetch('/api/netlat',{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(j){ if(j&&j.ok){ SYS.lat=(j.ms<0?'超时':(j.ms+'ms')); } })
+    .catch(function(){});
+}
+setInterval(pollLat,30000); pollLat();
 setInterval(pollProcs,5000);
 pollProcs();
 
