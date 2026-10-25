@@ -2546,7 +2546,7 @@ function timerTick(){
        S.cal.events.push({id:uid(),date:today(),text:'🧘 专注 '+Math.round(DUR.work/60)+' 分钟',ts:Date.now()});
        if(S.cal.events.length>200)S.cal.events.shift();
       save();
-      chime(); toast('专注完成，休息 '+Math.round(DUR.brk/60)+' 分钟'); notify('智己工作站 · 专注完成','休息 '+Math.round(DUR.brk/60)+' 分钟，放松一下'); noiseStop(true); renderFocusToday();
+      var CH=['干得漂亮，这一整段完全属于你','沉浸结束，思路更清爽了','又稳住一段专注，连续感在变强','每一段专注都在给未来铺路','漂亮！休息时就彻底放松','心流告一段落，给自己点个赞'];var _ch=CH[Math.floor(Math.random()*CH.length)];chime(); toast('🎉 '+_ch+'。休息 '+Math.round(DUR.brk/60)+' 分钟');notify('智己工作站 · 专注完成',_ch+'，休息一下'); noiseStop(true); renderFocusToday();
       tMode='brk';
     }else{
       chime(); toast('休息结束，开始新一轮专注'); notify('智己工作站 · 休息结束','开始新一轮专注吧');
