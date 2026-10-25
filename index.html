@@ -2546,7 +2546,7 @@ function timerTick(){
        S.cal.events.push({id:uid(),date:today(),text:'🧘 专注 '+Math.round(DUR.work/60)+' 分钟',ts:Date.now()});
        if(S.cal.events.length>200)S.cal.events.shift();
       save();
-      var CH=['干得漂亮，这一整段完全属于你','沉浸结束，思路更清爽了','又稳住一段专注，连续感在变强','每一段专注都在给未来铺路','漂亮！休息时就彻底放松','心流告一段落，给自己点个赞'];var _ch=CH[Math.floor(Math.random()*CH.length)];chime(); toast('🎉 '+_ch+'。休息 '+Math.round(DUR.brk/60)+' 分钟');notify('智己工作站 · 专注完成',_ch+'，休息一下'); noiseStop(true); renderFocusToday();
+      var _tm=Math.round((S.focus.secs[today()]||0)/60);var CH=_tm>=60?['今日专注已超一小时，真的强','高产的一天，状态拉满了','这么投入，进步看得见']:(_tm>=25?['节奏很稳，继续保持','状态在线，稳住了','又一段扎实的专注']:['开了个好头，继续加油','第一段专注，不错的起步','小小的专注也是进步']);var _ch=CH[Math.floor(Math.random()*CH.length)];chime(); toast('🎉 '+_ch+'。今日已专注 '+_tm+' 分钟，休息 '+Math.round(DUR.brk/60)+' 分钟');notify('智己工作站 · 专注完成',_ch+'（今日 '+_tm+' 分钟），休息一下'); noiseStop(true); renderFocusToday();
       tMode='brk';
     }else{
       chime(); toast('休息结束，开始新一轮专注'); notify('智己工作站 · 休息结束','开始新一轮专注吧');
