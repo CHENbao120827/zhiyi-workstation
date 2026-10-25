@@ -173,7 +173,7 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .proc-fill{height:100%;background:linear-gradient(90deg,#2f6bff,#38bdf8);border-radius:3px;transition:width .5s}
 .proc-mem{width:58px;text-align:right;color:var(--dim);font-family:ui-monospace,Consolas,monospace}
 .proc-off{font-size:11px;color:var(--dim);padding:4px 0}
-.sys-meta b{color:var(--sub);font-weight:600}
+.sys-meta b{color:var(--sub);font-weight:600}.lat-good{color:#34d399!important}.lat-warn{color:#fbbf24!important}.lat-bad{color:#f87171!important}.lat-off{color:#64748b!important}
 .sys-off{text-align:center;padding:26px 10px;font-size:13px;color:var(--dim);line-height:2}
 .sys-off .cmd{display:inline-block;margin-top:6px;font-size:11px;color:var(--sky);background:var(--card2);border:1px solid var(--line);padding:4px 12px;border-radius:6px;letter-spacing:1px;font-family:ui-monospace,Consolas,monospace}
 /* 快速启动 */
@@ -1363,7 +1363,7 @@ function renderWeather(){
 }
 
 /* ---------- 系统监测（本地后端 /api/sys） ---------- */
-var SYS={on:false,hist:[],lat:'--'};
+var SYS={on:false,hist:[],latTxt:'--',latCls:'lat-off'};
 function sysCls(p){ return p>=85?' hot':(p>=60?' warn':''); }
 function drawSpark(){
   var c=$('spark'); if(!c)return;
@@ -1408,7 +1408,7 @@ function renderSys(d){
     +diskHtml
     +'</div>'
     +'<canvas id="spark" class="sys-spark"></canvas>'
-    +'<div class="sys-meta"><span>内存 <b>'+memTxt+'</b></span><span>运行 <b>'+esc(d.up.text)+'</b></span><span>进程 <b>'+d.procs+'</b></span><span>延迟 <b>'+SYS.lat+'</b></span><span>IP <b>'+esc((d.ip[0]||'—'))+'</b></span></div>'
+    +'<div class="sys-meta"><span>内存 <b>'+memTxt+'</b></span><span>运行 <b>'+esc(d.up.text)+'</b></span><span>进程 <b>'+d.procs+'</b></span><span title="外网到阿里DNS往返延迟">延迟 <b class="'+SYS.latCls+'">'+SYS.latTxt+'</b></span><span>IP <b>'+esc((d.ip[0]||'—'))+'</b></span></div>'
     +'<div class="net-row" id="netRow"><span class="net-d">↓ --</span><span class="net-u">↑ --</span><span class="net-if">测速中</span></div>'
     +'<div class="proc-title">进程占用 Top<span style="color:var(--dim);font-weight:400">内存排序</span></div>'
     +'<div id="procBox"></div>';
@@ -1477,7 +1477,7 @@ setInterval(pollSys,2000);
 function pollLat(){
   fetch('/api/netlat',{headers:{'X-Token':SYNC_TOKEN},cache:'no-store'})
     .then(function(r){return r.json();})
-    .then(function(j){ if(j&&j.ok){ SYS.lat=(j.ms<0?'超时':(j.ms+'ms')); } })
+    .then(function(j){ if(j&&j.ok){ var m=j.ms; SYS.latTxt=(m<0?'超时':(m+'ms')); SYS.latCls=(m<0?'lat-off':(m>150?'lat-bad':(m>80?'lat-warn':'lat-good'))); var b=document.querySelector('.sys-meta b.lat-good,.sys-meta b.lat-warn,.sys-meta b.lat-bad,.sys-meta b.lat-off'); if(b){ b.className=SYS.latCls; b.textContent=SYS.latTxt; } } })
     .catch(function(){});
 }
 setInterval(pollLat,30000); pollLat();
