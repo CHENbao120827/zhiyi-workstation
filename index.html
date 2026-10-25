@@ -1400,6 +1400,7 @@ function renderSys(d){
   var diskHtml=d.disk.map(function(x){
     return '<div class="sys-row"><span class="lbl">'+esc(x.drive)+'</span><div class="sys-bar"><div class="sys-fill'+(x.pct>=85?' hot':(x.pct>=70?' warn':''))+'" style="width:'+x.pct+'%"></div></div><span class="val">'+x.pct+'%</span></div>';
   }).join('')||'<div class="empty">未获取到磁盘信息</div>';
+  var _upSec=(d.up&&d.up.sec)||0;var upCls=_upSec>28800?'lat-bad':(_upSec>3600?'lat-warn':'lat-good');var upT=_upSec>28800?' title="系统已连续运行超过 8 小时，建议重启一下"':(_upSec>3600?' title="系统已连续运行"':'');
   el.innerHTML=
     '<div class="sys-head"><span class="sys-host"><b>'+esc(d.host)+'</b> · '+d.cpu.cores+' 核 · '+esc(d.cpu.model.split('CPU')[0])+'</span></div>'
     +'<div class="sys-metrics">'
@@ -1408,7 +1409,7 @@ function renderSys(d){
     +diskHtml
     +'</div>'
     +'<canvas id="spark" class="sys-spark"></canvas>'
-    +'<div class="sys-meta"><span>内存 <b>'+memTxt+'</b></span><span>运行 <b>'+esc(d.up.text)+'</b></span><span>进程 <b>'+d.procs+'</b></span><span title="外网到阿里DNS往返延迟">延迟 <b class="'+SYS.latCls+'">'+SYS.latTxt+'</b></span><span>IP <b>'+esc((d.ip[0]||'—'))+'</b></span></div>'
+    +'<div class="sys-meta"><span>内存 <b>'+memTxt+'</b></span><span'+upT+'>运行 <b class="'+upCls+'">'+esc(d.up.text)+'</b></span><span>进程 <b>'+d.procs+'</b></span><span title="外网到阿里DNS往返延迟">延迟 <b class="'+SYS.latCls+'">'+SYS.latTxt+'</b></span><span>IP <b>'+esc((d.ip[0]||'—'))+'</b></span></div>'
     +'<div class="net-row" id="netRow"><span class="net-d">↓ --</span><span class="net-u">↑ --</span><span class="net-if">测速中</span></div>'
     +'<div class="proc-title">进程占用 Top<span style="color:var(--dim);font-weight:400">内存排序</span></div>'
     +'<div id="procBox"></div>';
