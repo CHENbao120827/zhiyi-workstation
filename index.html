@@ -1958,10 +1958,12 @@ function renderTasks(){
     el.innerHTML=shown.map(function(t){
       var od=isOd(t);
       var dueTxt;
+      var _h=t.dueH||'';
       if(od) dueTxt='已过期 '+daysPast(t.due)+' 天';
       else if(!t.due) dueTxt='';
       else { var _dd=Math.round((new Date(t.due)-new Date(today()))/86400000);
-        dueTxt=_dd===0?'今天截止':_dd===1?'明天截止':_dd===2?'后天截止':_dd+' 天后截止'; }
+        dueTxt=_dd===0?('今天'+(_h?' '+_h+' 截止':' 截止')):_dd===1?('明天'+(_h?' '+_h:'')+' 截止'):_dd===2?('后天'+(_h?' '+_h:'')+' 截止'):_dd+' 天后截止';
+        if(_dd===0&&_h){ var _now=new Date(); var _hm=_now.getHours()*60+_now.getMinutes(); var _hp=parseInt(_h.slice(0,2),10)*60+parseInt(_h.slice(3),10); if(_hp<_now) dueTxt='今天 '+_h+' 已过'; } }
       return '<div class="task-item'+(t.done?' done':'')+(od?' overdue':'')+((selSet[t.id])?' selon':'')+'" data-id="'+t.id+'"'+(t.done?'':' draggable="true"')+'>'
         +'<input type="checkbox" class="sel" data-act="sel"'+(selSet[t.id]?' checked':'')+'>'
         +'<span class="ck'+(t.done?' on':'')+'" data-act="toggle"></span>'
@@ -1996,14 +1998,17 @@ function parseTaskInput(raw){
   else if(/后天/.test(text)){days=2;text=text.replace(/后天/g,' ');}
   else if(/下周/.test(text)){days=7;text=text.replace(/下周/g,' ');}
   else { var dm=text.match(/(\d+)天后/); if(dm){days=parseInt(dm[1],10);text=text.replace(dm[0],' ');} }
+  var dueH=null;
+  var tm=text.match(/(\d{1,2})[:点](\d{2})\s*/);
+  if(tm){ var hh=parseInt(tm[1],10),mm=parseInt(tm[2],10); if(hh>=0&&hh<24&&mm>=0&&mm<60){dueH=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;text=text.replace(tm[0],' ');} }
   if(days!==null){ due=fmt(new Date(Date.now()+days*86400000)); }
   text=text.replace(/\s+/g,' ').trim();
-  return {text:text,pri:pri,due:due};
+  return {text:text,pri:pri,due:due,dueH:dueH};
 }
 function addTask(){
   var v=$('taskInput').value.trim(); if(!v)return;
   var p=parseTaskInput(v);
-  S.tasks.unshift({id:uid(),text:p.text,pri:p.pri||$('taskPri').value,due:p.due||$('taskDue').value||null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
+  S.tasks.unshift({id:uid(),text:p.text,pri:p.pri||$('taskPri').value,due:p.due||$('taskDue').value||null,dueH:p.dueH||null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
   $('taskInput').value=''; $('taskDue').value=''; save();
 }
 function toggleTask(id){
@@ -2151,7 +2156,7 @@ function renderMiniTodo(){
 function miniAddTask(){
   var v=$('miniTaskInput').value.trim(); if(!v)return;
   var p=parseTaskInput(v);
-  S.tasks.unshift({id:uid(),text:p.text,pri:p.pri||'mid',due:p.due||null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
+  S.tasks.unshift({id:uid(),text:p.text,pri:p.pri||'mid',due:p.due||null,dueH:p.dueH||null,done:false,created:Date.now(),doneAt:null,order:-Date.now()});
   $('miniTaskInput').value=''; save(); renderAll(); if(typeof toast==='function')toast('已加入待办');
 }
 $('miniTaskInput').addEventListener('keydown',function(e){if(e.key==='Enter')miniAddTask();});
