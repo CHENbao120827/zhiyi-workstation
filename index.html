@@ -194,6 +194,9 @@ h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-
 .ov-score .os-badge{flex:none;width:38px;height:38px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
 .ov-score .os-txt{font-size:13px;color:var(--txt)}
 .ov-score .os-txt small{display:block;font-size:11px;color:var(--sub);margin-top:2px}
+.ov-next{grid-column:1/-1;display:flex;align-items:center;gap:9px;padding:9px 13px;border-radius:10px;background:linear-gradient(135deg,rgba(245,193,94,.10),rgba(245,193,94,.03));border:1px solid rgba(245,193,94,.28);font-size:13px;color:var(--txt);cursor:pointer;transition:.15s}
+.ov-next:hover{border-color:rgba(245,193,94,.55);transform:translateY(-1px)}
+.ov-next .on-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .due-quick{display:flex;align-items:center;gap:6px;margin:7px 0 3px;flex-wrap:wrap}
 .due-quick .dq-label{font-size:11px;color:var(--dim)}
 .due-quick button{background:var(--card2);border:1px solid var(--line);color:var(--sub);font-size:11px;padding:3px 11px;border-radius:7px;cursor:pointer;font-family:inherit;transition:.15s}
@@ -2122,7 +2125,8 @@ function renderOverview(){
   var lvl=sc>=80?['爆发状态','#52c41a']:sc>=60?['稳步推进','#38bdf8']:sc>=40?['渐入佳境','#fbbf24']:['蓄力中','#94a3b8'];
   el.innerHTML+='<div class="ov-score"><span class="os-badge" style="color:'+lvl[1]+';border-color:'+lvl[1]+'55">'+sc+'</span><span class="os-txt">今日效率速评 · <b style="color:'+lvl[1]+'">'+lvl[0]+'</b><small>专注 '+fm+' 分 / 完成 '+done+'/'+total+' / 习惯 '+hDone+' 项</small></span></div>';
 
-  el.querySelectorAll('.ov-item[data-view]').forEach(function(it){
+  var _open=S.tasks.filter(function(t){return !t.done;});function _rk(t){ if(isOd(t))return 0; if(t.pri==='high')return 1; if(t.pri==='mid')return 2; return 3; }_open.sort(function(a,b){return _rk(a)-_rk(b);});var _nx=_open[0];if(_nx){var _nxTag=isOd(_nx)?'<span style="color:var(--bad);font-size:11px">已过期</span>':(_nx.pri==='high'?'<span style="color:var(--gold);font-size:11px">高优</span>':(_nx.pri==='mid'?'<span style="color:var(--sky);font-size:11px">中优</span>':'<span style="color:var(--sub);font-size:11px">低优</span>'));el.innerHTML+='<div class="ov-next" data-view="todo" title="点此前往待办">👉 <span class="on-t">下一步：'+esc(_nx.text)+'</span>'+_nxTag+'</div>';}
+  el.querySelectorAll('[data-view]').forEach(function(it){
     it.style.cursor='pointer';
     it.onclick=function(){ var b=document.querySelector('.navb[data-view="'+it.getAttribute('data-view')+'"]'); if(b)b.click(); };
   });
