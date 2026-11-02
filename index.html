@@ -1937,8 +1937,16 @@ function priRank(p){return p==='high'?0:(p==='mid'?1:2);}
 function daysPast(due){ return Math.max(0,Math.floor((Date.now()-new Date(due+'T00:00:00'))/86400000)); }
 function isOd(t){ return !t.done&&!!t.due&&t.due<today(); }
 function renderTasks(){
+  function dueKey(t){
+    if(t.done||!t.due) return 1e9;
+    var days=Math.round((new Date(t.due)-new Date(today()))/86400000);
+    var mins=days*1440;
+    if(t.dueH){ mins+=parseInt(t.dueH.slice(0,2),10)*60+parseInt(t.dueH.slice(3),10); }
+    else { if(days===0) mins+=1439; else if(days===1) mins+=720; }
+    return mins;
+  }
   var list=S.tasks.slice().sort(function(a,b){
-    return (a.done?1:0)-(b.done?1:0)||priRank(a.pri)-priRank(b.pri)||((a.order!=null?Number(a.order):a.created)-(b.order!=null?Number(b.order):b.created));
+    return (a.done?1:0)-(b.done?1:0)||priRank(a.pri)-priRank(b.pri)||dueKey(a)-dueKey(b)||((a.order!=null?Number(a.order):a.created)-(b.order!=null?Number(b.order):b.created));
   });
   var shown=list.filter(function(t){
     if(taskFilter==='open')return !t.done;
