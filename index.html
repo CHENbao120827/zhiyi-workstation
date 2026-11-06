@@ -391,6 +391,11 @@ select{min-width:120px}
 .note-search{width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:8px 12px;font-size:13px;margin:4px 0 6px;font-family:inherit;outline:none;transition:.15s}
 .note-search:focus{border-color:rgba(77,124,255,.5);box-shadow:0 0 0 3px rgba(77,124,255,.12)}
 .note-search::placeholder{color:var(--dim)}
+.task-search-wrap{display:flex;align-items:center;gap:9px;margin:9px 0 6px}
+.task-search-wrap .note-search{flex:1;min-width:0;margin:0}
+.task-search-wrap .note-search:focus{box-shadow:0 0 0 3px rgba(77,124,255,.10)}
+.ts-cnt{flex:none;font-size:11px;color:var(--sub);white-space:nowrap}
+.kw-hit{background:rgba(77,124,255,.30);color:var(--txt);border-radius:3px;padding:0 2px;font-weight:600}
 .tag-chip{background:rgba(77,124,255,.06);border:1px solid rgba(77,124,255,.28);color:#8fb3ff;font-size:12px;padding:4px 12px;border-radius:20px;cursor:pointer;transition:.2s;font-family:inherit}
 .tag-chip:hover{border-color:rgba(77,124,255,.6);color:#c7dcff}
 .tag-chip.on{background:rgba(56,189,248,.16);border-color:#38bdf8;color:#7dd3fc;box-shadow:0 0 12px rgba(56,189,248,.25)}
@@ -673,6 +678,7 @@ canvas{width:100%;display:block}
         </select>
         <button id="btnAddTask" class="primary">添加</button>
       </div>
+      <div class="task-search-wrap"><input id="taskSearch" class="note-search" type="text" placeholder="🔍 搜索待办关键词，Esc 清空…"><span id="taskSearchCnt" class="ts-cnt"></span></div>
       <div class="due-quick" id="dueQuick">
         <span class="dq-label">快捷截止：</span><button data-d="0">今天</button><button data-d="1">明天</button><button data-d="3">3天后</button><button data-d="7">下周</button><button data-d="clear" class="dq-clear">清除</button>
       </div>
@@ -1948,7 +1954,16 @@ function renderTasks(){
   var list=S.tasks.slice().sort(function(a,b){
     return (a.done?1:0)-(b.done?1:0)||priRank(a.pri)-priRank(b.pri)||dueKey(a)-dueKey(b)||((a.order!=null?Number(a.order):a.created)-(b.order!=null?Number(b.order):b.created));
   });
+  var _kw=(S&&S.taskKw||'').trim().toLowerCase();
+  function hiText(v){
+    if(!_kw)return esc(v);
+    var str=String(v==null?'':v), low=str.toLowerCase(), out=[], i=0, j;
+    while((j=low.indexOf(_kw,i))>-1){ out.push(esc(str.slice(i,j))); out.push('<mark class="kw-hit">'+esc(str.slice(j,j+_kw.length))+'</mark>'); i=j+_kw.length; }
+    out.push(esc(str.slice(i)));
+    return out.join('');
+  }
   var shown=list.filter(function(t){
+    if(_kw&&(t.text||'').toLowerCase().indexOf(_kw)<0)return false;
     if(taskFilter==='open')return !t.done;
     if(taskFilter==='done')return t.done;
     if(taskFilter==='overdue')return isOd(t);
@@ -1958,10 +1973,12 @@ function renderTasks(){
     return true;
   });
   visibleIds=shown.map(function(t){return t.id;});
+  var _cnt=$('taskSearchCnt'); if(_cnt)_cnt.textContent=(_kw?'匹配 '+shown.length+' 条':'');
   var el=$('taskList');
   if(!shown.length){
     var emptyTxt={all:'，添加第一个任务吧',open:'，没有待办任务',done:'，还没有完成的任务',overdue:'，没有过期任务'}[taskFilter]||'';
-    el.innerHTML='<div class="empty">这里空空的'+emptyTxt+'</div>';
+    if(_kw){ el.innerHTML='<div class="empty">没有找到含「'+esc(S.taskKw)+'」的任务</div>'; }
+    else el.innerHTML='<div class="empty">这里空空的'+emptyTxt+'</div>';
   }else{
     el.innerHTML=shown.map(function(t){
       var od=isOd(t);
@@ -1970,12 +1987,13 @@ function renderTasks(){
       if(od) dueTxt='已过期 '+daysPast(t.due)+' 天';
       else if(!t.due) dueTxt='';
       else { var _dd=Math.round((new Date(t.due)-new Date(today()))/86400000);
-        dueTxt=_dd===0?('今天'+(_h?' '+_h+' 截止':' 截止')):_dd===1?('明天'+(_h?' '+_h:'')+' 截止'):_dd===2?('后天'+(_h?' '+_h:'')+' 截止'):_dd+' 天后截止';
-        if(_dd===0&&_h){ var _now=new Date(); var _hm=_now.getHours()*60+_now.getMinutes(); var _hp=parseInt(_h.slice(0,2),10)*60+parseInt(_h.slice(3),10); if(_hp<_now) dueTxt='今天 '+_h+' 已过'; } }
+        if(_dd<0) dueTxt='已过期 '+daysPast(t.due)+' 天';
+        else dueTxt=_dd===0?('今天'+(_h?' '+_h+' 截止':' 截止')):_dd===1?('明天'+(_h?' '+_h:'')+' 截止'):_dd===2?('后天'+(_h?' '+_h:'')+' 截止'):_dd+' 天后截止';
+        if(_dd===0&&_h){ var _now=new Date(); var _hm=_now.getHours()*60+_now.getMinutes(); var _hp=parseInt(_h.slice(0,2),10)*60+parseInt(_h.slice(3),10); if(_hp<_hm) dueTxt='今天 '+_h+' 已过'; } }
       return '<div class="task-item'+(t.done?' done':'')+(od?' overdue':'')+((selSet[t.id])?' selon':'')+'" data-id="'+t.id+'"'+(t.done?'':' draggable="true"')+'>'
         +'<input type="checkbox" class="sel" data-act="sel"'+(selSet[t.id]?' checked':'')+'>'
         +'<span class="ck'+(t.done?' on':'')+'" data-act="toggle"></span>'
-        +'<span class="tt">'+esc(t.text)+'</span>'
+        +'<span class="tt">'+hiText(t.text)+'</span>'
         +((t.due)?'<span class="task-due'+(od?' od':'')+'">'+dueTxt+'</span>':'')
         +'<span class="pri pri-'+t.pri+'">'+priName(t.pri)+'</span>'
         +(t.done?'':'<span class="grip">⠿</span>')
@@ -2369,6 +2387,13 @@ $('btnPickNote').addEventListener('click',pickNote);
 $('pickBox').addEventListener('click',function(){ if(!S.notes||!S.notes.length){ this.style.display='none'; } else { pickNote(); } });
 $('btnAddNote').addEventListener('click',addNote);
 $('noteSearch').addEventListener('input',function(e){ S.noteKw=e.target.value; renderNotes(); });
+(function(){
+  var ts=$('taskSearch'); if(!ts)return;
+  ts.value=(S&&S.taskKw)||'';
+  function _apply(v){ S.taskKw=v; try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(err){} renderTasks(); }
+  ts.addEventListener('input',function(e){ _apply(e.target.value); });
+  ts.addEventListener('keydown',function(e){ if(e.key==='Escape'){ this.value=''; _apply(''); e.preventDefault(); } });
+})();
 $('noteInput').addEventListener('keydown',function(e){ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))addNote(); });
 $('noteList').addEventListener('click',function(e){
   var f=e.target.closest('[data-f]'); if(f){ setNoteFilter(f.getAttribute('data-f')); return; }
